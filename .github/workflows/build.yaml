@@ -36,7 +36,7 @@ jobs:
       - run: |
           mkdir web
           npx --package=binaryen -- wasm-opt -O4 --output web/maze.wasm target/wasm/maze_bg.wasm
-          cp target/wasm/web.js web/maze.js
+          cp target/wasm/maze.js web/maze.js
           cp index.html web/index.html
       - run: |
           cargo build --features console_log,debug --profile release --target wasm32-unknown-unknown
@@ -44,7 +44,7 @@ jobs:
       - run: |
           mkdir web/debug
           cp target/wasm/maze_bg.wasm web/debug/maze.wasm
-          cp target/wasm/web.js web/debug/maze.js
+          cp target/wasm/maze.js web/debug/maze.js
           cp index.html web/debug/index.html
       - uses: actions/upload-pages-artifact@v1
         with:
