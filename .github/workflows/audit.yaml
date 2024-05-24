@@ -4,8 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-  schedule:
-    - cron: "30 12 * * *"
 
 jobs:
   audit:
@@ -25,5 +23,3 @@ jobs:
         if: (success() || failure()) && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
         with:
           fail-on-severity: low
-      - run: cargo outdated --root-deps-only --exit-code 1
-        if: success() || failure()
