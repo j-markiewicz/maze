@@ -3,7 +3,6 @@ name = "maze"
 version = "0.1.0"
 edition = "2021"
 publish = false
-authors = ["janm-dev"]
 description = "Maze generator and solver"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/j-markiewicz/maze"
