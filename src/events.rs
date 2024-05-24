@@ -1,4 +1,4 @@
-//! `web-bg`-generated JavaScript events
+//! Game-generated JavaScript events
 
 use std::{
 	fmt::{Display, Formatter, Result as FmtResult},
@@ -46,10 +46,10 @@ impl RunEvent {
 	#[must_use]
 	pub const fn name(&self) -> &'static str {
 		match self {
-			Self::Loaded(_) => "web-bg-load",
-			Self::Initialized(_) => "web-bg-init",
-			Self::Started(_) => "web-bg-start",
-			Self::Panicked(_) => "web-bg-panic",
+			Self::Loaded(_) => "maze-load",
+			Self::Initialized(_) => "maze-init",
+			Self::Started(_) => "maze-start",
+			Self::Panicked(_) => "maze-panic",
 		}
 	}
 
@@ -88,17 +88,17 @@ impl RunEvent {
 impl Display for RunEvent {
 	fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
 		match self {
-			Self::Loaded(game) => f.write_fmt(format_args!("`web-bg` loaded, starting '{game}'")),
-			Self::Initialized(None) => f.write_str("`web-bg` initialized"),
+			Self::Loaded(game) => f.write_fmt(format_args!("game loaded, starting '{game}'")),
+			Self::Initialized(None) => f.write_str("game initialized"),
 			Self::Initialized(Some(d)) => {
-				f.write_fmt(format_args!("`web-bg` initialized in {} ms", d.as_millis()))
+				f.write_fmt(format_args!("game initialized in {} ms", d.as_millis()))
 			}
-			Self::Started(None) => f.write_str("`web-bg` started"),
+			Self::Started(None) => f.write_str("game started"),
 			Self::Started(Some(d)) => {
-				f.write_fmt(format_args!("`web-bg` started in {} ms", d.as_millis()))
+				f.write_fmt(format_args!("game started in {} ms", d.as_millis()))
 			}
-			Self::Panicked(None) => f.write_str("`web-bg` panicked"),
-			Self::Panicked(Some(d)) => f.write_fmt(format_args!("`web-bg` panicked:\n{d}")),
+			Self::Panicked(None) => f.write_str("game panicked"),
+			Self::Panicked(Some(d)) => f.write_fmt(format_args!("game panicked:\n{d}")),
 		}
 	}
 }

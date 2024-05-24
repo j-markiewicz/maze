@@ -1,8 +1,16 @@
-# `web-bg`
+# Generator Labiryntu
 
-Interactive website backgrounds in [Rust](https://www.rust-lang.org/) with [Bevy](https://bevyengine.org/).
+Projekt na AiSD 2 (2023/24).
 
-Try it out locally with `cargo run` or see below for more info.
+## Algorytmy i Struktury Danych
+
+### Reprezentacja Labiryntu
+
+Labirynt na potrzeby generacji i wizualizacji jest reprezentowany jako tablica pozycji o rozmiarze X * Y, czyli tablicy dwuwymiarowej. Przyleganie pozycji do siebie jest określane za pomocy indeksu dwóch pozycji - jeśli indeksy różnią się o 1 (pozycje są obok siebie) lub o X (pozycje są nad/pod sobą) to pozycje do siebie przylegają. Każda pozycja zawiera informacje o ścianach, które ma - przejście między pozycjami jest możliwe, jeśli nie ma pomiędzy nimi ściany.
+
+### Generowanie Labiryntu
+
+Do generowania labiryntu został użyty zmodyfikowany algorytm DFS, który w każdej iteracji otwiera przejście i przechodzi do losowej przylegającej pozycji (startując ze środka) lub jeśli wszystkie takie pozycje już zostały odwiedzone, to wraca do poprzedniej pozycji i próbuje ponownie. Algorytm się zakańcza kiedy wszystkie pozycje zostały odwiedzone. Dodadkowo, została dodana możliwość stworzenia "pokoji" w labiryncie, aby labirynt nie był acykliczny (pokoje to pozycje w labiryncie, które mają usunięte wszystkie ściany). Algorytm ten został wybrany, ponieważ jest dość prosty (zwłaszcza dla wybranej reprezentacji labiryntu), łatwy do zmodyfikowania, i generuje dobrze wyglądające labirynty.
 
 ## Building
 
@@ -17,20 +25,6 @@ To build `web-bg` for the web (with full optimizations), run [`cargo build --pro
 To try out `web-bg` in a web browser follow the instructions above to build it for the web, start an HTTP server (e.g. with `python -m http.server -d web`) and open [`http://localhost:8000/`](http://localhost:8000/) in a browser.
 
 When deploying `web-bg` on a website, serve the generated `.js` and `.wasm` files and add the appropriate elements to your website. You can use `index.html` as a template. See `.github/workflows/build.yaml` for an example of an automatic build of `web-bg`.
-
-## Minigames/backgrounds
-
-Each minigame has one [Cargo feature](https://doc.rust-lang.org/cargo/reference/features.html) which controls whether that minigame will be included in the final bundle. By default, all minigames are included.
-
-|       Title |       Feature | Done? | Description |
-| ----------- | ------------- | ----- | ----------- |
-|   Asteroids |   `asteroids` |    No | An *[Asteroids](https://en.wikipedia.org/wiki/Asteroids_(video_game))*-inspired space flying game. |
-|      Lander |      `lander` |    No | A 2.5D/2D moon landing simulator in the [Lunar Lander](https://en.wikipedia.org/wiki/Lunar_Lander_(video_game_genre)) genre, inspired by [XKCD 2712 - *Gravity*](https://xkcd.com/2712/). |
-|      Mapgen |      `mapgen` |    No | [Wavefunction collapse](https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/)-based [Carcassonne](https://en.wikipedia.org/wiki/Carcassonne_(board_game))-esque map generator. |
-|     MAP-MAN |      `mapman` |    No | A 2.5D *[PAC-MAN](https://en.wikipedia.org/wiki/Pac-Man)*-based game played on a real-world map, similar to [Google Maps' 2015 and 2017 April Fool's jokes](https://pacman.fandom.com/wiki/Google_Maps_Pac-Man), but with 3D buildings. |
-|   Maze Cave |        `maze` |   Yes | A randomly generated maze/cave. |
-|     Portoom |     `portoom` |    No | A *[Doom](https://en.wikipedia.org/wiki/Doom_(1993_video_game))*-style, *[Portal](https://en.wikipedia.org/wiki/Portal_(video_game))*-inspired first-person shooter. |
-|     Racecar |     `racecar` |    No | A 2D multiplayer [slot car racing](https://en.wikipedia.org/wiki/Slot_car_racing) game. Real multiplayer support (playing against other people) coming soon. |
 
 ## Usage on the web
 
@@ -56,7 +50,7 @@ The `console_log` feature does nothing when *not* compiling for the web.
 
 ## Attribution
 
-In addition to Cargo dependencies, the following additional resources are used as part of `web-bg`:
+In addition to Cargo dependencies, the following additional resources are used as part of this project:
 
 - Maze Cave (in `assets/maze/`):
   - Player character based on ["Reaper" by SamuelLee](https://samuellee.itch.io/reaper-animated-pixel-art) (`player-idle.png` and `player-walking.png`)
@@ -67,18 +61,3 @@ In addition to Cargo dependencies, the following additional resources are used a
   - The [Roboto font](https://fonts.google.com/specimen/Roboto), used under the terms of the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0) in `assets/fonts/roboto.ttf` and `assets/fonts/roboto-bold.ttf`
   - The [Retro Pixel Thick font](https://retro-pixel-font.takwolf.com/), used under the terms of the [Open Font License version 1.1](https://raw.githubusercontent.com/TakWolf/retro-pixel-font/0e90d12/LICENSE-OFL) in `assets/fonts/pixel.ttf`
   - [`github-markdown-css`](https://github.com/sindresorhus/github-markdown-css), used under the terms of [the MIT license](./about.hbs#this-document) for styling in `about.hbs` (and the html file generated from it)
-
-For Cargo dependencies, you can use [`cargo about generate -o ATTRIBUTION.html --all-features about.hbs`](https://github.com/EmbarkStudios/cargo-about) to generate an html file with information about dependencies and their licenses.
-
-## License
-
-This project (with the exception of some assets in the `assets` directory) is licensed under either of
-
-- Apache license, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
-
-at your option.
-
-## Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in `web-bg` by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.

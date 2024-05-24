@@ -4,10 +4,10 @@ use bevy::{prelude::*, render::camera::ClearColorConfig, window::PrimaryWindow};
 
 use crate::util::{input, PlayerInput};
 
-mod food;
 #[allow(clippy::module_inception)]
 mod maze;
 mod player;
+mod ui;
 
 pub fn start(app: &mut App) {
 	app.add_systems(
@@ -16,7 +16,7 @@ pub fn start(app: &mut App) {
 			player::initialize,
 			maze::initialize,
 			camera_initialization,
-			food::init_ui,
+			ui::init,
 		),
 	);
 
@@ -32,9 +32,6 @@ pub fn start(app: &mut App) {
 			player::collision.after(player::movement),
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,
-			food::eat,
-			food::dim,
-			food::update_ui,
 		),
 	);
 	app.insert_resource(PlayerInput::default());

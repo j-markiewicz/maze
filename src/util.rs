@@ -1,4 +1,4 @@
-//! `web-bg` utilities and other miscellaneous things.
+//! Utilities and other miscellaneous things.
 
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 use std::fmt::{Error as FmtError, Result as FmtResult};
@@ -14,36 +14,6 @@ use tracing_subscriber::{
 };
 use turborand::rng::AtomicRng;
 pub use turborand::TurboRand;
-
-/// Quickly declare minigames
-///
-/// Only use this macro once. It creates a const called `GAMES` with a name and
-/// [`SystemsFn`]s, the first for startup systems, the second for regular
-/// systems. This macro handles cfg features and module declarations.
-#[macro_export]
-macro_rules! games {
-	{$($feat:literal => $name:ident),*$(,)?} => {
-		$(
-			#[cfg(feature = $feat)] mod $name;
-		)*
-
-		struct Game {
-			name: &'static str,
-			start: fn(&mut bevy::app::App)
-		}
-
-		const GAMES: &[Game] = &[
-			$(
-				#[cfg(feature = $feat)] Game { name: $feat, start: $name::start },
-			)*
-		];
-
-		$(
-			#[cfg(not(feature = $feat))]
-		)*
-		compile_error!("At least one minigame must be enabled");
-	}
-}
 
 /// Random number generator resource
 #[derive(Debug, Resource, Deref, DerefMut)]
@@ -226,7 +196,7 @@ impl FormatTime for PerformanceTimer {
 }
 
 /// A filter for `tracing_subscriber` similar to the default bevy filter
-/// (`"wgpu=error,naga=warn,web-bg=debug", otherwise info`)
+/// (`"wgpu=error,naga=warn,maze=debug", otherwise info`)
 #[derive(Debug, Clone, Copy)]
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 pub struct LogFilter;
@@ -239,7 +209,7 @@ impl LogFilter {
 			meta.level() <= &Level::ERROR
 		} else if path.starts_with("naga") {
 			meta.level() <= &Level::WARN
-		} else if path.starts_with("web_bg") {
+		} else if path.starts_with("maze") {
 			meta.level() <= &Level::DEBUG
 		} else {
 			meta.level() <= &Level::INFO

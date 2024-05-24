@@ -91,35 +91,30 @@ impl Maze {
 
 	/// Spawn the tile at `(x, y)` at the given location
 	#[allow(clippy::too_many_arguments)]
-	pub fn spawn_tile(
-		&self,
-		x: u32,
-		y: u32,
-		loc: Vec2,
-		commands: &mut Commands,
-		asset_server: &AssetServer,
-		texture_atlases: &mut Assets<TextureAtlasLayout>,
-		rng: &Rand,
-	) {
+	pub fn spawn_tile(&self, x: u32, y: u32, loc: Vec2, commands: &mut Commands) {
 		let tile = self.get(x, y);
 
 		let ti = tile_bits(self.idx(x, y), &self.tiles);
 
 		commands
-			.spawn((tile, TilePos { x, y }, PbrBundle {
-				mesh: self.floor_mesh.clone(),
-				material: self.textures[ti as usize].clone(),
-				transform: Transform {
-					translation: Vec3 {
-						x: loc.x,
-						y: loc.y,
+			.spawn((
+				tile,
+				TilePos { x, y },
+				PbrBundle {
+					mesh: self.floor_mesh.clone(),
+					material: self.textures[ti as usize].clone(),
+					transform: Transform {
+						translation: Vec3 {
+							x: loc.x,
+							y: loc.y,
+							..default()
+						},
+						scale: Vec3::splat(TILE_SCALE),
 						..default()
 					},
-					scale: Vec3::splat(TILE_SCALE),
 					..default()
 				},
-				..default()
-			}))
+			))
 			.with_children(|builder| {
 				let is_fully_open = tile.is_open(Top)
 					&& tile.is_open(Right)
@@ -132,10 +127,6 @@ impl Maze {
 
 				if !(is_fully_closed || is_fully_open) {
 					self.spawn_tile_walls(builder, tile);
-				}
-
-				if tile.has_food() {
-					super::food::spawn(builder, asset_server, texture_atlases, rng);
 				}
 			});
 	}
@@ -445,10 +436,7 @@ pub fn initialize(
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn spawn_visible_tiles(
 	mut commands: Commands,
-	asset_server: Res<AssetServer>,
-	mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
 	maze: Res<Maze>,
-	rng: Res<Rand>,
 	tiles: Query<&TilePos, With<Tile>>,
 	window: Query<&Window, (With<PrimaryWindow>, Without<Tile>, Without<Camera2d>)>,
 	camera: Query<&Transform, (With<Camera2d>, Changed<Transform>, Without<Tile>)>,
@@ -496,15 +484,7 @@ pub fn spawn_visible_tiles(
 		});
 
 	for (x, y, i) in new_tiles {
-		maze.spawn_tile(
-			x,
-			y,
-			tile_position(i as _),
-			&mut commands,
-			&asset_server,
-			&mut texture_atlases,
-			&rng,
-		);
+		maze.spawn_tile(x, y, tile_position(i as _), &mut commands);
 	}
 }
 

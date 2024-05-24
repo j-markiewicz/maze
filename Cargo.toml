@@ -1,23 +1,14 @@
 [package]
-name = "web-bg"
+name = "maze"
 version = "0.1.0"
 edition = "2021"
 publish = false
 authors = ["janm-dev"]
-description = "Interactive website backgrounds in Rust with Bevy."
+description = "Maze generator and solver"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/janm-dev/web-bg"
+repository = "https://github.com/j-markiewicz/maze"
 
 [features]
-default = [
-	"asteroids",
-	"lander",
-	"mapman",
-	"mapgen",
-	"maze",
-	"portoom",
-	"racecar",
-]
 dynamic = ["bevy/dynamic_linking"]
 debug = [
 	"dep:tracing",
@@ -38,13 +29,6 @@ console_log = [
 	"dep:tracing-subscriber",
 	"dep:tracing-web",
 ]
-asteroids = []
-lander = []
-mapgen = []
-mapman = []
-maze = []
-portoom = []
-racecar = []
 
 [dependencies]
 tracing = { version = "0.1.40", optional = true }

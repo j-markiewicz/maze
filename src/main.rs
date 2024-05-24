@@ -35,7 +35,7 @@ use rlsf::SmallGlobalTlsf;
 use tracing_subscriber::{fmt::format::Pretty, prelude::*};
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 use tracing_web::{performance_layer, MakeConsoleWriter};
-use util::{Rand, TurboRand};
+use util::Rand;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -43,15 +43,7 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: SmallGlobalTlsf = SmallGlobalTlsf::new();
 
-games! {
-	// "asteroids" => asteroids,
-	// "lander" => lander,
-	// "mapgen" => mapgen,
-	// "mapman" => mapman,
-	"maze" => maze,
-	// "portoom" => portoom,
-	// "racecar" => racecar,
-}
+mod maze;
 
 fn panic_hook(panic_info: &PanicInfo<'_>) {
 	#[cfg(target_arch = "wasm32")]
@@ -111,11 +103,7 @@ pub fn main() {
 	}
 
 	events::init();
-
-	let rng = Rand::new();
-	let game = rng.sample(GAMES).expect("there are no games");
-
-	events::loaded(game.name);
+	events::loaded("Maze");
 
 	let mut app = App::new();
 
@@ -128,7 +116,7 @@ pub fn main() {
 				title: if cfg!(target_arch = "wasm32") {
 					String::new()
 				} else {
-					format!("{} | web-bg", game.name)
+					"Maze".to_string()
 				},
 				..default()
 			}),
@@ -142,7 +130,7 @@ pub fn main() {
 		.disable::<LogPlugin>();
 
 	app.insert_resource(ClearColor(Color::NONE))
-		.insert_resource(rng)
+		.insert_resource(Rand::new())
 		.insert_resource(Msaa::Sample4)
 		.add_plugins(default_plugins);
 
@@ -171,7 +159,6 @@ pub fn main() {
 	app.add_systems(PostStartup, events::initialized);
 	app.add_systems(Update, events::started);
 
-	(game.start)(&mut app);
-
+	maze::start(&mut app);
 	app.run();
 }
