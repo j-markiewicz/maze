@@ -16,7 +16,7 @@ pub fn start(app: &mut App) {
 			player::initialize,
 			maze::initialize,
 			camera_initialization,
-			ui::init,
+			// ui::init,
 		),
 	);
 
