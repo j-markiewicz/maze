@@ -10,7 +10,7 @@ Labirynt na potrzeby generacji i wizualizacji jest reprezentowany jako tablica p
 
 ### Generowanie Labiryntu
 
-Do generowania labiryntu został użyty zmodyfikowany algorytm DFS, który w każdej iteracji otwiera przejście i przechodzi do losowej przylegającej pozycji (startując ze środka) lub jeśli wszystkie takie pozycje już zostały odwiedzone, to wraca do poprzedniej pozycji i próbuje ponownie. Algorytm się zakańcza kiedy wszystkie pozycje zostały odwiedzone. Dodadkowo, została dodana możliwość stworzenia "pokoji" w labiryncie, aby labirynt nie był acykliczny (pokoje to pozycje w labiryncie, które mają usunięte wszystkie ściany). Algorytm ten został wybrany, ponieważ jest dość prosty (zwłaszcza dla wybranej reprezentacji labiryntu), łatwy do zmodyfikowania, i generuje dobrze wyglądające labirynty.
+Do generowania labiryntu został użyty zmodyfikowany algorytm DFS, który w każdej iteracji otwiera przejście i przechodzi do losowej przylegającej pozycji (startując ze środka) lub jeśli wszystkie takie pozycje już zostały odwiedzone, to wraca do poprzedniej pozycji i próbuje ponownie. Algorytm się zakańcza kiedy wszystkie pozycje zostały odwiedzone. Dodatkowo, została dodana możliwość stworzenia "pokoi" w labiryncie, aby labirynt nie był acykliczny (pokoje to pozycje w labiryncie, które mają usunięte wszystkie ściany). Algorytm ten został wybrany, ponieważ jest dość prosty (zwłaszcza dla wybranej reprezentacji labiryntu), łatwy do zmodyfikowania, i generuje dobrze wyglądające labirynty.
 
 ## Kompilacja
 
@@ -18,7 +18,7 @@ Aby zbudować i uruchomić aplikację do lokalnego testowania, należy użyć [`
 
 Aby zbudować aplikację z optymalizacjami, nalezy użyć [`cargo build --release`](https://doc.rust-lang.org/cargo/commands/cargo-build.html). Skompilowany plik będzie znajdował się w `./target/release/maze[.exe]`. Ten proces trwa kilka minut i nie jest zalecana do debugowania/testowania.
 
-Aby zbudować `web-bg` dla platformy web (z pełnymi optymalizacjami), należy użyć [`cargo build --profile release-wasm --target wasm32-unknown-unknown`](https://doc.rust-lang.org/cargo/commands/cargo-build.html), stworzyć nowy katalog o nazwie `web` (`mkdir web`), a następnie użyć [`wasm-bindgen --out-name web --out-dir target/wasm --target web target/wasm32-unknown-unknown/release-wasm/web-bg. wasm`](https://github.com/rustwasm/wasm-bindgen) i opcjonalnie [`wasm-opt -Oz --output web/web_bg.wasm target/wasm/web_bg.wasm`](https://github.com/WebAssembly/binaryen), i skopiować do niego `index.html` i `target/wasm/web.js` jako `background.js` (`cp index.html web/index.html` i `cp target/wasm/web.js web/background.js`). Ten proces trwa kilka minut i nie jest zalecana do debugowania/testowania.
+Aby zbudować `web-bg` dla platformy web (z pełnymi optymalizacjami), należy użyć [`cargo build --profile release-wasm --target wasm32-unknown-unknown`](https://doc.rust-lang.org/cargo/commands/cargo-build.html), stworzyć nowy katalog o nazwie `web` (`mkdir web`), a następnie użyć [`wasm-bindgen --out-name maze --out-dir target/wasm --target web target/wasm32-unknown-unknown/release-wasm/maze.wasm`](https://github.com/rustwasm/wasm-bindgen) i `cp target/wasm/maze_bg.wasm web/maze.wasm` lub [`wasm-opt -O4 --output web/maze.wasm target/wasm/maze_bg.wasm`](https://github.com/WebAssembly/binaryen), i skopiować do niego `index.html` i `target/wasm/web.js` jako `maze.js` (`cp index.html web/index.html` i `cp target/wasm/web.js web/maze.js`). Ten proces trwa kilka minut i nie jest zalecana do debugowania/testowania.
 
 ### Kompilacja dla WWW
 
