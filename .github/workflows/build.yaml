@@ -40,7 +40,7 @@ jobs:
           cp index.html web/index.html
       - run: |
           cargo build --features console_log,debug --profile release --target wasm32-unknown-unknown
-          wasm-bindgen --out-name maze --out-dir target/wasm --target web target/wasm32-unknown-unknown/release/maze_bg.wasm
+          wasm-bindgen --out-name maze --out-dir target/wasm --target web target/wasm32-unknown-unknown/release/maze.wasm
       - run: |
           mkdir web/debug
           cp target/wasm/maze_bg.wasm web/debug/maze_bg.wasm
