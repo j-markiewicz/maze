@@ -6,7 +6,7 @@ use super::player::Player;
 use crate::util::{Rand, TurboRand};
 
 const MOVEMENT_SPEED: f32 = 30.0;
-const LIGHT_INITIAL_INTENSITY: f32 = 50_000_000.0;
+const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
 
 #[derive(Debug, Component)]
 pub struct Path;
@@ -70,7 +70,10 @@ pub fn light_flicker(
 
 		if timer.just_finished() {
 			light.intensity = LIGHT_INITIAL_INTENSITY * ((*rng).f32() + 1.0) / 2.0;
-			light.intensity *= 10000.0 / trans.translation().distance_squared(player);
+			light.intensity *= f32::min(
+				1.0,
+				10000.0 / (trans.translation().distance_squared(player) + f32::EPSILON),
+			);
 			timer.set_duration(Duration::from_secs_f64((*rng).f64() / 5.0));
 		}
 	}

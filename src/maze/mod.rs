@@ -6,13 +6,14 @@ use bevy::{prelude::*, render::camera::ClearColorConfig, window::PrimaryWindow};
 
 use crate::util::{input, PlayerInput};
 
+mod algorithms;
 #[allow(clippy::module_inception)]
 mod maze;
 mod path;
 mod player;
 mod ui;
 
-const SUN_BRIGHTNESS: f32 = 100_000.0;
+const SUN_BRIGHTNESS: f32 = 50_000.0;
 
 pub fn start(app: &mut App) {
 	app.add_systems(
@@ -85,13 +86,6 @@ fn camera_initialization(mut commands: Commands) {
 					color: Color::ANTIQUE_WHITE,
 					illuminance: SUN_BRIGHTNESS,
 					shadows_enabled: true,
-					..default()
-				},
-				transform: Transform {
-					translation: Vec3 {
-						z: 100.0,
-						..default()
-					},
 					..default()
 				},
 				..default()

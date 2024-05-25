@@ -2,7 +2,13 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use super::{maze, maze::Tile, PlayerInput};
+use super::{
+	algorithms::{
+		Direction::{Bottom, Left, Right, Top},
+		Tile,
+	},
+	maze, PlayerInput,
+};
 use crate::util::{Rand, TurboRand};
 
 const TILE_SIZE: Vec2 = Vec2::new(24.0, 32.0);
@@ -92,7 +98,7 @@ pub fn initialize(
 						translation: Vec3 {
 							x: 0.0,
 							y: 0.0,
-							z: 0.5,
+							z: 0.0,
 						},
 						..default()
 					},
@@ -150,8 +156,6 @@ pub fn collision(
 	mut player: Query<&mut Transform, With<Player>>,
 	tiles: Query<(&Transform, &Tile), Without<Player>>,
 ) {
-	use maze::Direction::{Bottom, Left, Right, Top};
-
 	let mut player = player.single_mut();
 
 	let half_size = maze::TILE_SIZE / 2.0;
