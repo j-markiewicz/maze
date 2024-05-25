@@ -33,7 +33,7 @@ Oprócz bibliotek z Cargo, następujące dodatkowe zasoby są używane jako czę
 - Maze Cave (w `assets/maze/`):
   - Postać gracza bazująca na ["Reaper" - SamuelLee](https://samuellee.itch.io/reaper-animated-pixel-art) (`player-idle.png` i `player-walking.png`).
   - Pochodnia gracza z ["Cave Explorer" - SamuelLee](https://samuellee.itch.io/cave-explorer-animated-pixel-art) (`player-idle.png` i `player-walking.png`)
-  - Teren z ["Textures" - PiiiXL](https://piiixl.itch.io/textures) (`cave-floor-1.png`, `cave-floor-2.png`, `cave-wall.png`, i `grass.png`)
+  - Teren z ["Textures" - PiiiXL](https://piiixl.itch.io/textures) (`cave-floor-1.png`, `cave-floor-2.png`, `cave-wall.png`, i `grass-*.png`)
 - Inne:
   - Czcionka [Roboto](https://fonts.google.com/specimen/Roboto), używana na warunkach licencji [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) w plikach `assets/fonts/roboto.ttf` i `assets/fonts/roboto-bold.ttf`.
   - Czcionka [Retro Pixel Thick](https://retro-pixel-font.takwolf.com/), używana na warunkach [Open Font License version 1.1](https://raw.githubusercontent.com/TakWolf/retro-pixel-font/0e90d12/LICENSE-OFL) w `assets/fonts/pixel.ttf`.
