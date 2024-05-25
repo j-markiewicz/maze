@@ -146,7 +146,6 @@ pub fn light_flicker(
 		if timer.just_finished() {
 			light.intensity = LIGHT_INITIAL_INTENSITY * ((*rng).f32() + 1.0) / 2.0;
 			timer.set_duration(Duration::from_secs_f64((*rng).f64() / 5.0));
-			light.shadows_enabled = !light.shadows_enabled;
 		}
 	}
 }
