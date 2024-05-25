@@ -145,6 +145,7 @@ pub fn light_flicker(
 }
 
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+#[allow(clippy::too_many_lines)]
 pub fn collision(
 	mut player: Query<&mut Transform, With<Player>>,
 	tiles: Query<(&Transform, &Tile), Without<Player>>,
@@ -171,6 +172,13 @@ pub fn collision(
 			diff.x < 1.5 * maze::TILE_SIZE.x * maze::TILE_SCALE
 				&& diff.y < 1.5 * maze::TILE_SIZE.y * maze::TILE_SCALE
 		})
+		.map(|(trans, tile)| {
+			if tile.is_grass() {
+				(trans, Tile::OPEN)
+			} else {
+				(trans, *tile)
+			}
+		})
 		.collect::<Vec<_>>();
 
 	if nearby_tiles.len() < 9 {
@@ -182,6 +190,11 @@ pub fn collision(
 	let nearby_tiles = nearby_tiles;
 
 	let current_tile = nearby_tiles[4];
+
+	if current_tile.1.is_grass() {
+		return;
+	}
+
 	let mut tile_edges = [
 		current_tile.0.translation.y + scaled_inner.y,
 		current_tile.0.translation.x + scaled_inner.x,

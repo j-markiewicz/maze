@@ -2,6 +2,7 @@ use std::{
 	array,
 	f32::consts::PI,
 	fmt::{Debug, Formatter, Result as FmtResult},
+	iter,
 	ops::Neg,
 };
 
@@ -18,7 +19,8 @@ use self::Direction::{Bottom, Left, Right, Top};
 use crate::util::{Rand, TurboRand};
 
 pub const MAZE_SIZE: UVec2 = UVec2::splat(128);
-pub const MAZE_ROOMS: usize = 1024;
+pub const MAZE_MARGIN: u32 = 56;
+pub const MAZE_ROOMS: usize = 16;
 
 pub const TILE_SIZE: Vec2 = Vec2::new(32.0, 32.0);
 pub const TILE_SCALE: f32 = 5.0;
@@ -94,38 +96,28 @@ impl Maze {
 	pub fn spawn_tile(&self, x: u32, y: u32, loc: Vec2, commands: &mut Commands) {
 		let tile = self.get(x, y);
 
-		let ti = tile_bits(self.idx(x, y), &self.tiles);
-
 		commands
-			.spawn((
-				tile,
-				TilePos { x, y },
-				PbrBundle {
-					mesh: self.floor_mesh.clone(),
-					material: self.textures[ti as usize].clone(),
-					transform: Transform {
-						translation: Vec3 {
-							x: loc.x,
-							y: loc.y,
-							..default()
-						},
-						scale: Vec3::splat(TILE_SCALE),
+			.spawn((tile, TilePos { x, y }, PbrBundle {
+				mesh: self.floor_mesh.clone(),
+				material: self.textures[tile.0 as usize].clone(),
+				transform: Transform {
+					translation: Vec3 {
+						x: loc.x,
+						y: loc.y,
 						..default()
 					},
+					scale: Vec3::splat(TILE_SCALE),
 					..default()
 				},
-			))
+				..default()
+			}))
 			.with_children(|builder| {
 				let is_fully_open = tile.is_open(Top)
 					&& tile.is_open(Right)
 					&& tile.is_open(Bottom)
 					&& tile.is_open(Left);
-				let is_fully_closed = tile.is_closed(Top)
-					&& tile.is_closed(Right)
-					&& tile.is_closed(Bottom)
-					&& tile.is_closed(Left);
 
-				if !(is_fully_closed || is_fully_open) {
+				if !(tile.is_grass() || is_fully_open) {
 					self.spawn_tile_walls(builder, tile);
 				}
 			});
@@ -213,12 +205,18 @@ impl Debug for Maze {
 fn gen_tile_textures(
 	wall: &[&[u8]],
 	floor: &[&[u8]],
+	grass: &[&[u8]],
 	images: &mut Assets<Image>,
 	rng: &Rand,
-) -> [Handle<Image>; 256] {
+) -> [(Handle<Image>, bool); 256] {
 	let mut res = array::from_fn::<_, 256, _>(|_| None);
 
 	let wall = wall
+		.iter()
+		.map(|data| load_from_memory(data).expect("invalid image").into_rgba8())
+		.collect::<Vec<_>>();
+
+	let grass = grass
 		.iter()
 		.map(|data| load_from_memory(data).expect("invalid image").into_rgba8())
 		.collect::<Vec<_>>();
@@ -229,7 +227,11 @@ fn gen_tile_textures(
 		.collect::<Vec<_>>();
 
 	for bits in 0u8..=255u8 {
-		let tile = Tile(bits & 0b1111);
+		let tile = Tile(if bits & 0b1111 == 0b1111 {
+			bits
+		} else {
+			bits & 0b1111
+		});
 
 		let is_edge = |sx, sy| match (sx, sy) {
 			(1..=3, 0) => tile.is_closed(Top),
@@ -252,7 +254,9 @@ fn gen_tile_textures(
 
 		for sy in 0..5 {
 			for sx in 0..5 {
-				let subimage = if is_fully_closed || is_edge(sx, sy) {
+				let subimage = if is_fully_closed && bits != 0xf {
+					rng.sample(&grass).expect("there are no grass images")
+				} else if is_edge(sx, sy) || bits == 0xf {
 					rng.sample(&wall).expect("there are no wall images")
 				} else {
 					rng.sample(&floor).expect("there are no floor images")
@@ -283,7 +287,7 @@ fn gen_tile_textures(
 			texture_view_descriptor: None,
 			..default()
 		});
-		res[bits as usize] = Some(handle);
+		res[bits as usize] = Some((handle, is_fully_closed && bits != 0xf));
 	}
 
 	res.map(|o| o.expect("image creation failed"))
@@ -320,20 +324,13 @@ pub struct TilePos {
 pub struct Tile(u8);
 
 impl Tile {
-	pub const fn closed() -> Self {
-		Self(0b1111)
-	}
+	/// Fully closed stone tile
+	pub const CLOSED: Self = Self(0b1111);
+	/// Fully open stone tile
+	pub const OPEN: Self = Self(0);
 
-	pub fn set_food(&mut self, has_food: bool) -> &mut Self {
-		if self.has_food() != has_food {
-			self.0 ^= 0b0001_0000;
-		}
-
-		self
-	}
-
-	pub const fn has_food(self) -> bool {
-		self.0 & 0b0001_0000 != 0
+	pub fn grass(rng: &Rand) -> Self {
+		Self(rng.u8(1..=0xf) << 4 | 0b1111)
 	}
 
 	/// Open the given `side` of this Tile
@@ -350,23 +347,29 @@ impl Tile {
 
 	/// Whether the given `side` of this Tile is open
 	pub const fn is_open(self, side: Direction) -> bool {
-		match side {
-			Direction::Top => self.0 & 0b1000 == 0,
-			Direction::Right => self.0 & 0b0100 == 0,
-			Direction::Bottom => self.0 & 0b0010 == 0,
-			Direction::Left => self.0 & 0b0001 == 0,
-		}
+		!self.is_grass()
+			&& match side {
+				Direction::Top => self.0 & 0b1000 == 0,
+				Direction::Right => self.0 & 0b0100 == 0,
+				Direction::Bottom => self.0 & 0b0010 == 0,
+				Direction::Left => self.0 & 0b0001 == 0,
+			}
 	}
 
 	/// Whether the given `side` of this Tile is closed
 	pub const fn is_closed(self, side: Direction) -> bool {
 		!self.is_open(side)
 	}
+
+	/// Whether this tile is grass
+	pub const fn is_grass(self) -> bool {
+		self.0 & 0b1111 == 0b1111 && self.0 >> 4 != 0
+	}
 }
 
 impl Default for Tile {
 	fn default() -> Self {
-		Self::closed()
+		Self(0b1111)
 	}
 }
 
@@ -382,6 +385,11 @@ pub fn initialize(
 	let floor = [
 		&include_bytes!("../../assets/maze/cave-floor-1.png")[..],
 		&include_bytes!("../../assets/maze/cave-floor-2.png")[..],
+	];
+	let grass = [
+		&include_bytes!("../../assets/maze/grass-1.png")[..],
+		&include_bytes!("../../assets/maze/grass-2.png")[..],
+		&include_bytes!("../../assets/maze/grass-3.png")[..],
 	];
 
 	let floor_mesh = meshes.add(Rectangle::from_size(TILE_SIZE));
@@ -402,13 +410,17 @@ pub fn initialize(
 
 	let maze = gen_maze(&rng);
 
-	let textures = gen_tile_textures(&wall, &floor, &mut images, &rng).map(|h| {
+	let textures = gen_tile_textures(&wall, &floor, &grass, &mut images, &rng).map(|(h, g)| {
 		materials.add(StandardMaterial {
 			base_color: Color::GRAY,
 			base_color_texture: Some(h.clone()),
 			reflectance: rng.f32().mul_add(0.1, 0.1),
 			perceptual_roughness: rng.f32().mul_add(0.15, 0.85),
-			emissive: Color::hsl(210.0, 0.3, 0.3).as_rgba() * 18.0,
+			emissive: if g {
+				Color::ANTIQUE_WHITE.as_rgba() * 25.0
+			} else {
+				Color::hsl(210.0, 0.3, 0.3).as_rgba() * 18.0
+			},
 			emissive_texture: Some(h),
 			unlit: false,
 			..default()
@@ -523,10 +535,10 @@ pub fn despawn_invisible_tiles(
 /// from the input tile position
 fn neighbors(UVec2 { x, y }: UVec2) -> impl Iterator<Item = (UVec2, Direction)> {
 	[
-		((x, u32::min(y + 1, MAZE_SIZE.y - 1)), Top),
-		((u32::min(x + 1, MAZE_SIZE.x - 1), y), Right),
-		((x, y.saturating_sub(1)), Bottom),
-		((x.saturating_sub(1), y), Left),
+		((x, u32::min(y + 1, MAZE_SIZE.y - 1 - MAZE_MARGIN)), Top),
+		((u32::min(x + 1, MAZE_SIZE.x - 1 - MAZE_MARGIN), y), Right),
+		((x, y.saturating_sub(1 + MAZE_MARGIN) + MAZE_MARGIN), Bottom),
+		((x.saturating_sub(1 + MAZE_MARGIN) + MAZE_MARGIN, y), Left),
 	]
 	.into_iter()
 	.map(|(v, d)| (UVec2::from(v), d))
@@ -543,12 +555,20 @@ fn gen_maze(rng: &Rand) -> Vec<Tile> {
 	let us = |u32: u32| -> usize { u32.try_into().unwrap() };
 	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
 
-	let mut maze = vec![Tile::default(); us(MAZE_SIZE.x) * us(MAZE_SIZE.y)];
+	let mut maze = iter::from_fn(|| Some(Tile::grass(rng)))
+		.take(us(MAZE_SIZE.x) * us(MAZE_SIZE.y))
+		.collect::<Vec<_>>();
 
 	let mut pos = MAZE_SIZE / 2;
 	let mut visited = Vec::with_capacity(us(MAZE_SIZE.x) * us(MAZE_SIZE.y));
 	visited.push(pos);
 	let mut route = vec![pos];
+
+	for x in MAZE_MARGIN..MAZE_SIZE.x - MAZE_MARGIN {
+		for y in MAZE_MARGIN..MAZE_SIZE.x - MAZE_MARGIN {
+			maze[idx(UVec2::new(x, y))] = Tile::CLOSED;
+		}
+	}
 
 	loop {
 		let Some((next, dir)) = next_maze(pos, &visited, rng) else {
@@ -580,7 +600,9 @@ fn gen_maze(rng: &Rand) -> Vec<Tile> {
 
 	for pos in rng
 		.sample_multiple_iter(
-			(0..MAZE_SIZE.x).flat_map(|x| (0..MAZE_SIZE.y).map(move |y| UVec2 { x, y })),
+			(MAZE_MARGIN + 1..MAZE_SIZE.x - 1 - MAZE_MARGIN).flat_map(|x| {
+				(MAZE_MARGIN + 1..MAZE_SIZE.y - 1 - MAZE_MARGIN).map(move |y| UVec2 { x, y })
+			}),
 			MAZE_ROOMS,
 		)
 		.into_iter()
@@ -590,24 +612,78 @@ fn gen_maze(rng: &Rand) -> Vec<Tile> {
 			.open(Direction::Top)
 			.open(Direction::Right)
 			.open(Direction::Bottom)
-			.open(Direction::Left)
-			.set_food(true);
+			.open(Direction::Left);
 
 		for (pos, dir) in neighbors(pos) {
 			maze[idx(pos)].open(-dir);
 		}
 	}
 
+	let exit = UVec2::new(
+		rng.u32(MAZE_MARGIN + 1..MAZE_SIZE.x - 1 - MAZE_MARGIN),
+		MAZE_SIZE.y - MAZE_MARGIN,
+	);
+	maze[idx(exit)].open(Bottom);
+	maze[idx(exit - UVec2::Y)].open(Top);
+
+	for x in MAZE_MARGIN - 1..=MAZE_SIZE.x - MAZE_MARGIN {
+		let pos = UVec2::new(x, MAZE_SIZE.y - MAZE_MARGIN);
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Left);
+		maze[idx(pos)].open(Right);
+
+		let pos = UVec2::new(x, MAZE_MARGIN - 1);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Left);
+		maze[idx(pos)].open(Right);
+	}
+
+	for y in MAZE_MARGIN - 1..=MAZE_SIZE.y - MAZE_MARGIN {
+		let pos = UVec2::new(MAZE_SIZE.x - MAZE_MARGIN, y);
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Right);
+
+		let pos = UVec2::new(MAZE_MARGIN - 1, y);
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Left);
+	}
+
+	for i in 0..maze.len() {
+		maze[i].0 = tile_bits(i, &maze);
+	}
+
+	for x in MAZE_MARGIN - 1..=MAZE_SIZE.x - MAZE_MARGIN {
+		let pos = UVec2::new(x, MAZE_SIZE.y - MAZE_MARGIN);
+		maze[idx(pos)].0 &= 0b0011_1111;
+
+		let pos = UVec2::new(x, MAZE_MARGIN - 1);
+		maze[idx(pos)].0 &= 0b1100_1111;
+	}
+
+	for y in MAZE_MARGIN - 1..=MAZE_SIZE.y - MAZE_MARGIN {
+		let pos = UVec2::new(MAZE_SIZE.x - MAZE_MARGIN, y);
+		maze[idx(pos)].0 &= 0b1010_1111;
+
+		let pos = UVec2::new(MAZE_MARGIN - 1, y);
+		maze[idx(pos)].0 &= 0b0101_1111;
+	}
+
 	maze
 }
 
 fn tile_bits(i: usize, maze: &[Tile]) -> u8 {
+	let tile = maze[i];
+	if tile.is_grass() {
+		return tile.0;
+	}
+
 	let maze_size = (
 		usize::try_from(MAZE_SIZE.x).unwrap(),
 		usize::try_from(MAZE_SIZE.y).unwrap(),
 	);
 
-	let tile = maze[i];
 	let tile_is_edge = !(maze_size.0..=(maze_size.1 - 1) * maze_size.0).contains(&i)
 		|| i % maze_size.0 == 0
 		|| i % maze_size.0 == maze_size.0 - 1;

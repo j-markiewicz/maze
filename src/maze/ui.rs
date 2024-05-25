@@ -37,16 +37,3 @@ use bevy::prelude::*;
 // 			}),));
 // 		});
 // }
-
-// pub fn dim(
-// 	player: Query<&GlobalTransform, (With<Player>, Without<Food>)>,
-// 	mut food: Query<(&GlobalTransform, &mut Sprite), With<Food>>,
-// ) {
-// 	let player = player.single().translation();
-
-// 	for (trans, mut sprite) in &mut food {
-// 		let d = trans.translation().distance_squared(player);
-
-// 		sprite.color.set_a(10000.0 / d);
-// 	}
-// }

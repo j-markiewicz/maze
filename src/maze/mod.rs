@@ -6,6 +6,7 @@ use crate::util::{input, PlayerInput};
 
 #[allow(clippy::module_inception)]
 mod maze;
+mod path;
 mod player;
 mod ui;
 
@@ -14,6 +15,7 @@ pub fn start(app: &mut App) {
 		Startup,
 		(
 			player::initialize,
+			path::initialize,
 			maze::initialize,
 			camera_initialization,
 			// ui::init,
@@ -30,6 +32,7 @@ pub fn start(app: &mut App) {
 			player::light_flicker,
 			player::movement,
 			player::collision.after(player::movement),
+			path::light_flicker,
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,
 		),
