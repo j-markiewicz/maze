@@ -1,5 +1,7 @@
 //! A randomly generated maze/cave.
 
+use std::f32;
+
 use bevy::{prelude::*, render::camera::ClearColorConfig, window::PrimaryWindow};
 
 use crate::util::{input, PlayerInput};
@@ -9,6 +11,8 @@ mod maze;
 mod path;
 mod player;
 mod ui;
+
+const SUN_BRIGHTNESS: f32 = 100_000.0;
 
 pub fn start(app: &mut App) {
 	app.add_systems(
@@ -54,26 +58,45 @@ fn camera_initialization(mut commands: Commands) {
 		ViewVisibility::default(),
 	));
 
-	commands.spawn((
-		Camera3dBundle {
-			camera: Camera {
-				order: 0,
-				..default()
-			},
-			projection: Projection::Orthographic(OrthographicProjection::default()),
-			transform: Transform {
-				translation: Vec3 {
-					x: 0.0,
-					y: 0.0,
-					z: 1.0,
+	commands
+		.spawn((
+			Camera3dBundle {
+				camera: Camera {
+					order: 0,
+					..default()
+				},
+				projection: Projection::Orthographic(OrthographicProjection::default()),
+				transform: Transform {
+					translation: Vec3 {
+						x: 0.0,
+						y: 0.0,
+						z: 10.0,
+					},
+					..default()
 				},
 				..default()
 			},
-			..default()
-		},
-		InheritedVisibility::default(),
-		ViewVisibility::default(),
-	));
+			InheritedVisibility::default(),
+			ViewVisibility::default(),
+		))
+		.with_children(|builder| {
+			builder.spawn(DirectionalLightBundle {
+				directional_light: DirectionalLight {
+					color: Color::ANTIQUE_WHITE,
+					illuminance: SUN_BRIGHTNESS,
+					shadows_enabled: true,
+					..default()
+				},
+				transform: Transform {
+					translation: Vec3 {
+						z: 100.0,
+						..default()
+					},
+					..default()
+				},
+				..default()
+			});
+		});
 }
 
 fn camera_movement(

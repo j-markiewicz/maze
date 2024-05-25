@@ -54,6 +54,9 @@ impl Maze {
 		wall_mesh: Handle<Mesh>,
 		floor_mesh: Handle<Mesh>,
 		wall_material: Handle<StandardMaterial>,
+		roof_mesh: Handle<Mesh>,
+		roof_material: Handle<StandardMaterial>,
+		commands: &mut Commands,
 	) -> Self {
 		let tiles = maze.into();
 
@@ -62,6 +65,21 @@ impl Maze {
 			u32::try_from(tiles.len()).unwrap(),
 			"the maze's size is incorrect"
 		);
+
+		commands.spawn(PbrBundle {
+			mesh: roof_mesh,
+			material: roof_material,
+			transform: Transform {
+				translation: Vec3 {
+					x: -TILE_SIZE.x / 2.0 * TILE_SCALE,
+					y: -TILE_SIZE.y / 2.0 * TILE_SCALE,
+					z: 15.0,
+				},
+				scale: Vec3::splat(TILE_SCALE),
+				..default()
+			},
+			..default()
+		});
 
 		Self {
 			width,
@@ -112,12 +130,7 @@ impl Maze {
 				..default()
 			}))
 			.with_children(|builder| {
-				let is_fully_open = tile.is_open(Top)
-					&& tile.is_open(Right)
-					&& tile.is_open(Bottom)
-					&& tile.is_open(Left);
-
-				if !(tile.is_grass() || is_fully_open) {
+				if !(tile.is_grass()) {
 					self.spawn_tile_walls(builder, tile);
 				}
 			});
@@ -208,7 +221,7 @@ fn gen_tile_textures(
 	grass: &[&[u8]],
 	images: &mut Assets<Image>,
 	rng: &Rand,
-) -> [(Handle<Image>, bool); 256] {
+) -> [Handle<Image>; 256] {
 	let mut res = array::from_fn::<_, 256, _>(|_| None);
 
 	let wall = wall
@@ -287,7 +300,7 @@ fn gen_tile_textures(
 			texture_view_descriptor: None,
 			..default()
 		});
-		res[bits as usize] = Some((handle, is_fully_closed && bits != 0xf));
+		res[bits as usize] = Some(handle);
 	}
 
 	res.map(|o| o.expect("image creation failed"))
@@ -373,6 +386,7 @@ impl Default for Tile {
 	}
 }
 
+#[allow(clippy::cast_precision_loss)]
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn initialize(
 	mut commands: Commands,
@@ -408,19 +422,28 @@ pub fn initialize(
 		..default()
 	});
 
+	let roof_size = MAZE_SIZE - 2 * UVec2::splat(MAZE_MARGIN);
+	let roof_mesh = meshes.add(Rectangle::from_size(
+		TILE_SIZE * Vec2::new(roof_size.x as f32, roof_size.y as f32),
+	));
+
+	let roof_material = materials.add(StandardMaterial {
+		base_color: Color::BLACK,
+		reflectance: 0.0,
+		unlit: true,
+		fog_enabled: false,
+		..default()
+	});
+
 	let maze = gen_maze(&rng);
 
-	let textures = gen_tile_textures(&wall, &floor, &grass, &mut images, &rng).map(|(h, g)| {
+	let textures = gen_tile_textures(&wall, &floor, &grass, &mut images, &rng).map(|h| {
 		materials.add(StandardMaterial {
 			base_color: Color::GRAY,
 			base_color_texture: Some(h.clone()),
 			reflectance: rng.f32().mul_add(0.1, 0.1),
 			perceptual_roughness: rng.f32().mul_add(0.15, 0.85),
-			emissive: if g {
-				Color::ANTIQUE_WHITE.as_rgba() * 25.0
-			} else {
-				Color::hsl(210.0, 0.3, 0.3).as_rgba() * 18.0
-			},
+			emissive: Color::hsl(210.0, 0.3, 0.3).as_rgba() * 18.0,
 			emissive_texture: Some(h),
 			unlit: false,
 			..default()
@@ -435,6 +458,9 @@ pub fn initialize(
 		wall_mesh,
 		floor_mesh,
 		wall_material,
+		roof_mesh,
+		roof_material,
+		&mut commands,
 	);
 
 	commands.insert_resource(maze);
