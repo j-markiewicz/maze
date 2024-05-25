@@ -35,7 +35,8 @@ jobs:
           wasm-bindgen --out-name maze --out-dir target/wasm --target web target/wasm32-unknown-unknown/release-wasm/maze.wasm
       - run: |
           mkdir web
-          npx --package=binaryen -- wasm-opt -O4 --output web/maze_bg.wasm target/wasm/maze_bg.wasm
+          # npx --package=binaryen -- wasm-opt -O4 --output web/maze_bg.wasm target/wasm/maze_bg.wasm
+          cp target/wasm/maze_bg.wasm web/maze_bg.wasm
           cp target/wasm/maze.js web/maze.js
           cp index.html web/index.html
       - run: |
