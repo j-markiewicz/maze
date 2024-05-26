@@ -6,7 +6,7 @@ use crate::player::Player;
 
 const SUN_BRIGHTNESS: f32 = 50_000.0;
 
-pub fn initialization(mut commands: Commands) {
+pub fn initialize(mut commands: Commands) {
 	commands.spawn((
 		Camera2dBundle {
 			camera: Camera {

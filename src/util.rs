@@ -25,10 +25,6 @@ impl Rand {
 	pub fn new() -> Self {
 		Self(AtomicRng::new())
 	}
-
-	pub const fn from_rng(rng: AtomicRng) -> Self {
-		Self(rng)
-	}
 }
 
 /// Up/down/left/right movement input within the range from `-1.0` to `1.0`
@@ -73,6 +69,7 @@ impl From<PlayerInput> for Vec3 {
 /// Insert the [`PlayerInput`] resource into the app on startup (this is not
 /// done automatically), then register this system, ideally before any
 /// movement/animation processing (e.g. in the `PreUpdate`) schedule
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn input(
 	mut input: ResMut<PlayerInput>,
 	key_input: Res<ButtonInput<KeyCode>>,

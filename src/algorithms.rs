@@ -39,6 +39,17 @@ impl MazeParams {
 	}
 }
 
+impl Default for MazeParams {
+	fn default() -> Self {
+		Self {
+			width: 7,
+			height: 5,
+			rooms: 2,
+			bias: DirectionalBias::None,
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum DirectionalBias {
 	None,

@@ -11,9 +11,6 @@ use std::{
 	panic::PanicInfo,
 };
 
-use algorithms::{DirectionalBias, MazeParams};
-#[cfg(any(feature = "debug", not(target_arch = "wasm32")))]
-use bevy::window::close_on_esc;
 #[cfg(feature = "debug")]
 use bevy::{
 	diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
@@ -27,17 +24,20 @@ use bevy_embedded_assets::{EmbeddedAssetPlugin, PluginMode};
 use bevy_screen_diagnostics::{
 	ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
+use bevy_simple_text_input::TextInputPlugin;
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 use rlsf::SmallGlobalTlsf;
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 use tracing_subscriber::{fmt::format::Pretty, prelude::*};
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 use tracing_web::{performance_layer, MakeConsoleWriter};
-use util::Rand;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::util::{input, PlayerInput};
+use crate::{
+	algorithms::MazeParams,
+	util::{input, PlayerInput, Rand},
+};
 
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 #[global_allocator]
@@ -139,29 +139,24 @@ pub fn main() {
 	app.insert_resource(ClearColor(Color::NONE))
 		.insert_resource(Rand::new())
 		.insert_resource(Msaa::Sample4)
-		.add_plugins(default_plugins);
+		.add_plugins((default_plugins, TextInputPlugin));
 
 	#[cfg(feature = "debug")]
-	{
-		app.add_plugins((
-			LogPlugin {
-				level: Level::DEBUG,
-				..default()
-			},
-			LogDiagnosticsPlugin::default(),
-			FrameTimeDiagnosticsPlugin,
-			OverlayPlugin {
-				font_size: 16.0,
-				..default()
-			},
-			ScreenDiagnosticsPlugin::default(),
-			ScreenFrameDiagnosticsPlugin,
-			ScreenEntityDiagnosticsPlugin,
-		));
-	}
-
-	#[cfg(any(feature = "debug", not(target_arch = "wasm32")))]
-	app.add_systems(Update, close_on_esc);
+	app.add_plugins((
+		LogPlugin {
+			level: Level::DEBUG,
+			..default()
+		},
+		LogDiagnosticsPlugin::default(),
+		FrameTimeDiagnosticsPlugin,
+		OverlayPlugin {
+			font_size: 16.0,
+			..default()
+		},
+		ScreenDiagnosticsPlugin::default(),
+		ScreenFrameDiagnosticsPlugin,
+		ScreenEntityDiagnosticsPlugin,
+	));
 
 	app.add_systems(PostStartup, events::initialized);
 	app.add_systems(Update, events::started);
@@ -172,12 +167,12 @@ pub fn main() {
 			player::initialize,
 			path::initialize,
 			maze::initialize,
-			camera::initialization,
-			// ui::init,
+			camera::initialize,
+			ui::initialize,
 		),
 	);
 
-	app.add_systems(PreUpdate, input);
+	app.add_systems(PreUpdate, (input, ui::open_close));
 
 	app.add_systems(
 		Update,
@@ -190,16 +185,14 @@ pub fn main() {
 			path::light_flicker,
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,
+			ui::focus,
+			ui::click,
+			ui::update,
 		),
 	);
 
 	app.insert_resource(PlayerInput::default());
-	app.insert_resource(MazeParams {
-		width: 7,
-		height: 5,
-		rooms: 2,
-		bias: DirectionalBias::None,
-	});
+	app.insert_resource(MazeParams::default());
 
 	app.run();
 }
