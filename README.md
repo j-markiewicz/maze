@@ -1,6 +1,6 @@
 # Generator Labiryntu
 
-Projekt na AiSD 2 (2023/24).
+Projekt na AiSD 2 (2023/24). Również dostępny na <https://j-markiewicz.github.io/maze>.
 
 ## Algorytmy i Struktury Danych
 
