@@ -3,7 +3,7 @@ use bevy_simple_text_input::{
 	TextInputBundle, TextInputInactive, TextInputSettings, TextInputTextStyle, TextInputValue,
 };
 
-use crate::algorithms::MazeParams;
+use crate::{algorithms::MazeParams, maze::RegenerateMaze};
 
 #[derive(Debug, Clone, Copy, Resource)]
 pub struct Ui(Option<Entity>);
@@ -87,11 +87,14 @@ pub fn open_close(
 pub fn click(
 	mut interaction: Query<(&Interaction, &UiButton), (Changed<Interaction>, With<Button>)>,
 	mut app_exit_events: EventWriter<AppExit>,
+	mut events: EventWriter<RegenerateMaze>,
 ) {
 	for (interaction, button) in &mut interaction {
 		if *interaction == Interaction::Pressed {
 			match button {
-				UiButton::Generate => todo!(),
+				UiButton::Generate => {
+					events.send(RegenerateMaze);
+				}
 				UiButton::Close => {
 					if !cfg!(target_arch = "wasm32") {
 						app_exit_events.send(AppExit);

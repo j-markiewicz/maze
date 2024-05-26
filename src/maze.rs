@@ -63,7 +63,10 @@ impl Maze {
 			"the maze's size is incorrect"
 		);
 
-		commands.spawn(PbrBundle {
+		let roof_size = UVec2::new(params.width() + 1, params.height() + 1);
+
+		#[allow(clippy::cast_precision_loss)]
+		commands.spawn((Roof, PbrBundle {
 			mesh: roof_mesh,
 			material: roof_material,
 			transform: Transform {
@@ -80,11 +83,11 @@ impl Maze {
 					},
 					z: 10.0,
 				},
-				scale: Vec3::splat(TILE_SCALE),
+				scale: Vec3::new(roof_size.x as f32, roof_size.y as f32, 1.0),
 				..default()
 			},
 			..default()
-		});
+		}));
 
 		Self {
 			tiles,
@@ -209,6 +212,63 @@ impl Debug for Maze {
 	}
 }
 
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Roof;
+
+#[derive(Debug, Clone, Copy, Event)]
+pub struct RegenerateMaze;
+
+#[allow(clippy::type_complexity)]
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn regenerate(
+	mut commands: Commands,
+	tiles: Query<Entity, With<Tile>>,
+	mut maze: ResMut<Maze>,
+	params: Res<MazeParams>,
+	rng: Res<Rand>,
+	mut events: EventReader<RegenerateMaze>,
+	roof: Query<(Entity, &Handle<Mesh>, &Handle<StandardMaterial>), With<Roof>>,
+) {
+	if !events.is_empty() {
+		events.clear();
+		maze.tiles = gen_maze(&rng, *params).into();
+
+		let (roof, roof_mesh, roof_material) = roof.single();
+
+		let roof_size = UVec2::new(params.width() + 1, params.height() + 1);
+
+		#[allow(clippy::cast_precision_loss)]
+		commands.spawn((Roof, PbrBundle {
+			mesh: roof_mesh.clone(),
+			material: roof_material.clone(),
+			transform: Transform {
+				translation: Vec3 {
+					x: if params.width % 2 == 0 {
+						TILE_SIZE.x / 2.0 * TILE_SCALE
+					} else {
+						0.0
+					},
+					y: if params.height % 2 == 0 {
+						TILE_SIZE.y / 2.0 * TILE_SCALE
+					} else {
+						0.0
+					},
+					z: 10.0,
+				},
+				scale: Vec3::new(roof_size.x as f32, roof_size.y as f32, 1.0),
+				..default()
+			},
+			..default()
+		}));
+
+		commands.entity(roof).despawn_recursive();
+
+		for tile in &tiles {
+			commands.entity(tile).despawn_recursive();
+		}
+	}
+}
+
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 fn gen_tile_textures(
 	wall: &[&[u8]],
@@ -307,7 +367,6 @@ pub struct TilePos {
 	pub y: u32,
 }
 
-#[allow(clippy::cast_precision_loss)]
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn initialize(
 	mut commands: Commands,
@@ -344,10 +403,7 @@ pub fn initialize(
 		..default()
 	});
 
-	let roof_size = UVec2::new(params.width() + 1, params.height() + 1);
-	let roof_mesh = meshes.add(Rectangle::from_size(
-		TILE_SIZE * Vec2::new(roof_size.x as f32, roof_size.y as f32),
-	));
+	let roof_mesh = meshes.add(Rectangle::from_size(TILE_SIZE * TILE_SCALE));
 
 	let roof_material = materials.add(StandardMaterial {
 		base_color: Color::BLACK,

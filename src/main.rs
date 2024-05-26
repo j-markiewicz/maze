@@ -25,6 +25,7 @@ use bevy_screen_diagnostics::{
 	ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
 use bevy_simple_text_input::TextInputPlugin;
+use maze::{RegenerateMaze, Roof};
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 use rlsf::SmallGlobalTlsf;
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
@@ -183,6 +184,7 @@ pub fn main() {
 			player::movement,
 			player::collision.after(player::movement),
 			path::light_flicker,
+			maze::regenerate,
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,
 			ui::focus,
@@ -193,6 +195,7 @@ pub fn main() {
 
 	app.insert_resource(PlayerInput::default());
 	app.insert_resource(MazeParams::default());
+	app.add_event::<RegenerateMaze>();
 
 	app.run();
 }
