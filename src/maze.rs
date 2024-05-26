@@ -21,6 +21,8 @@ use super::algorithms::{
 use crate::util::{Rand, TurboRand};
 
 pub const MAZE_SIZE: UVec2 = UVec2::splat(128);
+pub const MIN_MAZE_SIZE: u16 = 3;
+pub const MAX_MAZE_SIZE: u16 = 100;
 
 pub const TILE_SIZE: Vec2 = Vec2::new(32.0, 32.0);
 pub const TILE_SCALE: f32 = 5.0;

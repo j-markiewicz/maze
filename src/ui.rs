@@ -3,7 +3,10 @@ use bevy_simple_text_input::{
 	TextInputBundle, TextInputInactive, TextInputSettings, TextInputTextStyle, TextInputValue,
 };
 
-use crate::{algorithms::MazeParams, maze::RegenerateMaze};
+use crate::{
+	algorithms::MazeParams,
+	maze::{RegenerateMaze, MAX_MAZE_SIZE, MIN_MAZE_SIZE},
+};
 
 #[derive(Debug, Clone, Copy, Resource)]
 pub struct Ui(Option<Entity>);
@@ -123,12 +126,14 @@ pub fn update(
 	mut maze_params: ResMut<MazeParams>,
 ) {
 	for (mut value, input) in &mut input {
-		let current_value = value.0.parse::<u16>().unwrap_or(0);
+		let current_value = value.0.parse::<u16>().unwrap_or_default();
 		value.0 = current_value.to_string();
 
 		match input {
-			UiInput::Width => maze_params.width = current_value,
-			UiInput::Height => maze_params.height = current_value,
+			UiInput::Width => maze_params.width = current_value.clamp(MIN_MAZE_SIZE, MAX_MAZE_SIZE),
+			UiInput::Height => {
+				maze_params.height = current_value.clamp(MIN_MAZE_SIZE, MAX_MAZE_SIZE);
+			}
 			UiInput::Rooms => maze_params.rooms = current_value,
 		}
 	}
