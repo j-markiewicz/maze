@@ -16,13 +16,11 @@ use image::{imageops, load_from_memory, RgbaImage};
 use super::algorithms::{
 	gen_maze,
 	Direction::{Bottom, Left, Right, Top},
-	Tile,
+	MazeParams, Tile,
 };
 use crate::util::{Rand, TurboRand};
 
 pub const MAZE_SIZE: UVec2 = UVec2::splat(128);
-pub const MAZE_MARGIN: u32 = 56;
-pub const MAZE_ROOMS: usize = 16;
 
 pub const TILE_SIZE: Vec2 = Vec2::new(32.0, 32.0);
 pub const TILE_SCALE: f32 = 5.0;
@@ -33,8 +31,6 @@ pub const SUBTILE_SCALE: f32 = 2.0 / 5.0;
 
 #[derive(Resource)]
 pub struct Maze {
-	width: u32,
-	height: u32,
 	pub tiles: Box<[Tile]>,
 	textures: Box<[Handle<StandardMaterial>; 256]>,
 	wall_mesh: Handle<Mesh>,
@@ -46,12 +42,11 @@ impl Maze {
 	/// Create a new `Maze`
 	///
 	/// # Panic
-	/// Panics if the maze is not `width * height` tiles large
+	/// Panics if the maze is not `MAZE_SIZE` tiles large
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		maze: impl Into<Box<[Tile]>>,
-		width: u32,
-		height: u32,
+		params: MazeParams,
 		textures: Box<[Handle<StandardMaterial>; 256]>,
 		wall_mesh: Handle<Mesh>,
 		floor_mesh: Handle<Mesh>,
@@ -63,8 +58,8 @@ impl Maze {
 		let tiles = maze.into();
 
 		assert_eq!(
-			width * height,
-			u32::try_from(tiles.len()).unwrap(),
+			MAZE_SIZE.x * MAZE_SIZE.y,
+			u32::try_from(tiles.len()).expect("maze is too large"),
 			"the maze's size is incorrect"
 		);
 
@@ -73,8 +68,16 @@ impl Maze {
 			material: roof_material,
 			transform: Transform {
 				translation: Vec3 {
-					x: -TILE_SIZE.x / 2.0 * TILE_SCALE,
-					y: -TILE_SIZE.y / 2.0 * TILE_SCALE,
+					x: if params.width % 2 == 0 {
+						TILE_SIZE.x / 2.0 * TILE_SCALE
+					} else {
+						0.0
+					},
+					y: if params.height % 2 == 0 {
+						TILE_SIZE.y / 2.0 * TILE_SCALE
+					} else {
+						0.0
+					},
 					z: 10.0,
 				},
 				scale: Vec3::splat(TILE_SCALE),
@@ -84,8 +87,6 @@ impl Maze {
 		});
 
 		Self {
-			width,
-			height,
 			tiles,
 			textures,
 			wall_mesh,
@@ -94,21 +95,16 @@ impl Maze {
 		}
 	}
 
-	/// Get the index into `tiles` for `(x, y)`
-	pub fn idx(&self, x: u32, y: u32) -> usize {
-		usize::try_from(y * self.width + x).unwrap()
-	}
-
 	/// Get the tile at `(x, y)`
 	///
 	/// # Panic
 	/// Panics if `x` is not less than the maze's width or `y` is not less than
 	/// the maze's height
 	pub fn get(&self, x: u32, y: u32) -> Tile {
-		assert!(x < self.width, "x must be less than the maze's width");
-		assert!(y < self.height, "y must be less than the maze's height");
+		assert!(x < MAZE_SIZE.x, "x must be less than the maze's width");
+		assert!(y < MAZE_SIZE.y, "y must be less than the maze's height");
 
-		self.tiles[self.idx(x, y)]
+		self.tiles[usize::try_from(y * MAZE_SIZE.x + x).unwrap()]
 	}
 
 	/// Spawn the tile at `(x, y)` at the given location
@@ -209,10 +205,7 @@ impl Maze {
 
 impl Debug for Maze {
 	fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-		f.debug_struct("Maze")
-			.field("width", &self.width)
-			.field("height", &self.height)
-			.finish_non_exhaustive()
+		f.debug_struct("Maze").finish_non_exhaustive()
 	}
 }
 
@@ -269,9 +262,9 @@ fn gen_tile_textures(
 
 		for sy in 0..5 {
 			for sx in 0..5 {
-				let subimage = if is_fully_closed && bits != 0xf {
+				let subimage = if is_fully_closed && bits != 0xff {
 					rng.sample(&grass).expect("there are no grass images")
-				} else if is_edge(sx, sy) || bits == 0xf {
+				} else if is_edge(sx, sy) || bits == 0xff {
 					rng.sample(&wall).expect("there are no wall images")
 				} else {
 					rng.sample(&floor).expect("there are no floor images")
@@ -319,19 +312,20 @@ pub struct TilePos {
 pub fn initialize(
 	mut commands: Commands,
 	rng: Res<Rand>,
+	params: Res<MazeParams>,
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 	mut images: ResMut<Assets<Image>>,
 ) {
-	let wall = [&include_bytes!("../../assets/maze/cave-wall.png")[..]];
+	let wall = [&include_bytes!("../assets/maze/cave-wall.png")[..]];
 	let floor = [
-		&include_bytes!("../../assets/maze/cave-floor-1.png")[..],
-		&include_bytes!("../../assets/maze/cave-floor-2.png")[..],
+		&include_bytes!("../assets/maze/cave-floor-1.png")[..],
+		&include_bytes!("../assets/maze/cave-floor-2.png")[..],
 	];
 	let grass = [
-		&include_bytes!("../../assets/maze/grass-1.png")[..],
-		&include_bytes!("../../assets/maze/grass-2.png")[..],
-		&include_bytes!("../../assets/maze/grass-3.png")[..],
+		&include_bytes!("../assets/maze/grass-1.png")[..],
+		&include_bytes!("../assets/maze/grass-2.png")[..],
+		&include_bytes!("../assets/maze/grass-3.png")[..],
 	];
 
 	let floor_mesh = meshes.add(Rectangle::from_size(TILE_SIZE));
@@ -350,7 +344,7 @@ pub fn initialize(
 		..default()
 	});
 
-	let roof_size = (MAZE_SIZE + 1) - 2 * UVec2::splat(MAZE_MARGIN);
+	let roof_size = UVec2::new(params.width() + 1, params.height() + 1);
 	let roof_mesh = meshes.add(Rectangle::from_size(
 		TILE_SIZE * Vec2::new(roof_size.x as f32, roof_size.y as f32),
 	));
@@ -363,7 +357,7 @@ pub fn initialize(
 		..default()
 	});
 
-	let maze = gen_maze(&rng);
+	let maze = gen_maze(&rng, *params);
 
 	let textures = gen_tile_textures(&wall, &floor, &grass, &mut images, &rng).map(|h| {
 		materials.add(StandardMaterial {
@@ -380,8 +374,7 @@ pub fn initialize(
 
 	let maze = Maze::new(
 		maze,
-		MAZE_SIZE.x,
-		MAZE_SIZE.y,
+		*params,
 		Box::new(textures),
 		wall_mesh,
 		floor_mesh,
@@ -442,8 +435,8 @@ pub fn spawn_visible_tiles(
 		})
 		.filter_map(|i| {
 			let pos = TilePos {
-				x: i as u32 % maze.width,
-				y: i as u32 / maze.width,
+				x: i as u32 % MAZE_SIZE.x,
+				y: i as u32 / MAZE_SIZE.x,
 			};
 
 			(!existing_tiles.contains(&pos)).then_some((pos.x, pos.y, i))

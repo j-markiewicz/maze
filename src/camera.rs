@@ -1,51 +1,12 @@
-//! A randomly generated maze/cave.
-
 use std::f32;
 
 use bevy::{prelude::*, render::camera::ClearColorConfig, window::PrimaryWindow};
 
-use crate::util::{input, PlayerInput};
-
-mod algorithms;
-#[allow(clippy::module_inception)]
-mod maze;
-mod path;
-mod player;
-mod ui;
+use crate::player::Player;
 
 const SUN_BRIGHTNESS: f32 = 50_000.0;
 
-pub fn start(app: &mut App) {
-	app.add_systems(
-		Startup,
-		(
-			player::initialize,
-			path::initialize,
-			maze::initialize,
-			camera_initialization,
-			// ui::init,
-		),
-	);
-
-	app.add_systems(PreUpdate, input);
-
-	app.add_systems(
-		Update,
-		(
-			camera_movement,
-			player::animation,
-			player::light_flicker,
-			player::movement,
-			player::collision.after(player::movement),
-			path::light_flicker,
-			maze::spawn_visible_tiles,
-			maze::despawn_invisible_tiles,
-		),
-	);
-	app.insert_resource(PlayerInput::default());
-}
-
-fn camera_initialization(mut commands: Commands) {
+pub fn initialization(mut commands: Commands) {
 	commands.spawn((
 		Camera2dBundle {
 			camera: Camera {
@@ -93,9 +54,9 @@ fn camera_initialization(mut commands: Commands) {
 		});
 }
 
-fn camera_movement(
-	mut cameras: Query<&mut Transform, (With<Camera>, Without<player::Player>)>,
-	player: Query<&Transform, With<player::Player>>,
+pub fn movement(
+	mut cameras: Query<&mut Transform, (With<Camera>, Without<Player>)>,
+	player: Query<&Transform, With<Player>>,
 	window: Query<&Window, With<PrimaryWindow>>,
 ) {
 	/// The free movement space on each side of the screen as a proportion of

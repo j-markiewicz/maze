@@ -6,14 +6,12 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::tabs_in_doc_comments)]
 
-pub mod events;
-pub mod util;
-
 use std::{
 	backtrace::{Backtrace, BacktraceStatus},
 	panic::PanicInfo,
 };
 
+use algorithms::{DirectionalBias, MazeParams};
 #[cfg(any(feature = "debug", not(target_arch = "wasm32")))]
 use bevy::window::close_on_esc;
 #[cfg(feature = "debug")]
@@ -39,11 +37,20 @@ use util::Rand;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use crate::util::{input, PlayerInput};
+
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 #[global_allocator]
 static ALLOC: SmallGlobalTlsf = SmallGlobalTlsf::new();
 
+mod algorithms;
+mod camera;
+mod events;
 mod maze;
+mod path;
+mod player;
+mod ui;
+mod util;
 
 fn panic_hook(panic_info: &PanicInfo<'_>) {
 	#[cfg(target_arch = "wasm32")]
@@ -159,6 +166,40 @@ pub fn main() {
 	app.add_systems(PostStartup, events::initialized);
 	app.add_systems(Update, events::started);
 
-	maze::start(&mut app);
+	app.add_systems(
+		Startup,
+		(
+			player::initialize,
+			path::initialize,
+			maze::initialize,
+			camera::initialization,
+			// ui::init,
+		),
+	);
+
+	app.add_systems(PreUpdate, input);
+
+	app.add_systems(
+		Update,
+		(
+			camera::movement,
+			player::animation,
+			player::light_flicker,
+			player::movement,
+			player::collision.after(player::movement),
+			path::light_flicker,
+			maze::spawn_visible_tiles,
+			maze::despawn_invisible_tiles,
+		),
+	);
+
+	app.insert_resource(PlayerInput::default());
+	app.insert_resource(MazeParams {
+		width: 7,
+		height: 5,
+		rooms: 2,
+		bias: DirectionalBias::None,
+	});
+
 	app.run();
 }

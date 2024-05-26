@@ -78,3 +78,17 @@ pub fn light_flicker(
 		}
 	}
 }
+
+// #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+// pub fn movement(
+// 	time: Res<Time>,
+// 	paths: Res<PathTree>,
+// 	mut query: Query<&mut Transform, With<Path>>,
+// ) {
+// 	let distance = MOVEMENT_SPEED * time.delta_seconds();
+
+// 	for mut trans in &mut query {
+// 		trans.translation.y += distance * input.up;
+// 		trans.translation.x += distance * input.right;
+// 	}
+// }
