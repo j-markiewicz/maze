@@ -44,6 +44,7 @@ impl RunEvent {
 	///
 	/// On `wasm32` this is the `type` of the `CustomEvent` for this `RunEvent`
 	#[must_use]
+	#[cfg(target_arch = "wasm32")]
 	pub const fn name(&self) -> &'static str {
 		match self {
 			Self::Loaded(_) => "maze-load",

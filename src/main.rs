@@ -25,7 +25,6 @@ use bevy_screen_diagnostics::{
 	ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
 use bevy_simple_text_input::TextInputPlugin;
-use maze::{RegenerateMaze, Roof};
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 use rlsf::SmallGlobalTlsf;
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
@@ -37,6 +36,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
 	algorithms::MazeParams,
+	maze::RegenerateMaze,
 	util::{input, PlayerInput, Rand},
 };
 
