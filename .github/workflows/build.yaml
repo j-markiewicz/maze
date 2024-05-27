@@ -65,7 +65,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: |
           sudo apt update
-          sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64
+          sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64 alsa-oss
           cargo build --release --target ${{ matrix.target }}
           mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
