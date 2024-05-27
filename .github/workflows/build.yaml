@@ -22,7 +22,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
       - id: tag
-        run: echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g >> $GITHUB_OUTPUT
+        run: echo "TAG=$(echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g)" >> $GITHUB_OUTPUT
       - run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
