@@ -190,7 +190,7 @@ pub fn gen_maze(rng: &Rand, params: MazeParams) -> Vec<Tile> {
 	}
 
 	let exit = UVec2::new(
-		rng.u32(params.margin_x() + 1..params.margin_x() + params.width() - 1),
+		rng.u32(params.margin_x()..params.margin_x() + params.width()),
 		params.margin_y() + params.height(),
 	);
 	maze[idx(exit)].open(Bottom);
