@@ -311,7 +311,7 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> Tree<TileP
 		.iter()
 		.map(|&p| (p, u32::MAX))
 		.collect::<HashMap<_, _>>();
-	*dbg!(&mut distances).get_mut(&start).unwrap() = 0;
+	*distances.get_mut(&start).unwrap() = 0;
 	let mut current = start;
 
 	loop {
