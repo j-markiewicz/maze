@@ -22,6 +22,7 @@ jobs:
       - run: echo "TAG='$(echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g)'" >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
@@ -49,6 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
           targets: ${{ matrix.target }}
       - run: |
@@ -76,6 +78,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
       - run: |
           cargo build --release --target ${{ matrix.target }}
           cp "target/${{ matrix.target }}/release/maze.exe" "labirynt-${{ matrix.target }}.exe"
