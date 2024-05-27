@@ -182,7 +182,7 @@ pub fn main() {
 			player::light_flicker,
 			player::movement,
 			player::collision.after(player::movement),
-			path::light_flicker,
+			path::flicker,
 			maze::regenerate,
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,

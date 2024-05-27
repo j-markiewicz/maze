@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::player::Player;
 use crate::{
-	maze::{tile_position, Paths, TilePos, MAZE_SIZE},
+	maze::{tile_position, Paths, TilePos, MAZE_SIZE, TILE_SCALE, TILE_SIZE},
 	util::{Rand, TurboRand},
 };
 
@@ -39,13 +39,13 @@ pub fn spawn(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 					PointLightBundle {
 						point_light: PointLight {
 							color: Color::hsl(
-								rng.f32_normalized().mul_add(5.0, 347.7),
-								rng.f32_normalized().mul_add(0.1, 0.83),
-								rng.f32_normalized().mul_add(0.1, 0.47),
+								rng.f32() * 360.0,
+								rng.f32_normalized().mul_add(0.25, 0.75),
+								rng.f32_normalized().mul_add(0.25, 0.5),
 							),
 							intensity: LIGHT_INITIAL_INTENSITY,
-							range: 1000.0,
-							shadows_enabled: true,
+							range: TILE_SIZE.x * TILE_SCALE,
+							shadows_enabled: false,
 							..default()
 						},
 						transform: Transform {
@@ -68,7 +68,7 @@ pub fn spawn(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 pub struct PathFlickerTimer(Timer);
 
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
-pub fn light_flicker(
+pub fn flicker(
 	time: Res<Time>,
 	rng: Res<Rand>,
 	player: Query<&GlobalTransform, (With<Player>, Without<Path>)>,
@@ -83,7 +83,7 @@ pub fn light_flicker(
 			light.intensity = LIGHT_INITIAL_INTENSITY * ((*rng).f32() + 1.0) / 2.0;
 			light.intensity *= f32::min(
 				1.0,
-				10000.0 / (trans.translation().distance_squared(player) + f32::EPSILON),
+				5000.0 / (trans.translation().distance_squared(player) + f32::EPSILON),
 			);
 			timer.set_duration(Duration::from_secs_f64((*rng).f64() / 5.0));
 		}
