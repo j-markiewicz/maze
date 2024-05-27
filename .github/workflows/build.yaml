@@ -1,28 +1,90 @@
 name: Build and Deploy
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
   group: "build"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  licenses:
+    name: Gather and Publish License Info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: |
+          cargo install --locked cargo-about
+          cargo about generate -o ATTRIBUTION.html --all-features about.hbs
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.event.head_commit.timestamp }}
+          fail_on_unmatched_files: true
+          files: ATTRIBUTION.html
+
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+    name: Build and Release - Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: |
+          sudo apt update
+          sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64
+          cargo build --release --target ${{ matrix.target }}
+          mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.event.head_commit.timestamp }}
+          fail_on_unmatched_files: true
+          files: labirynt-${{ matrix.target }}
+
+  release-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+    name: Build and Release - Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: |
+          cargo build --release --target ${{ matrix.target }}
+          cp "target/${{ matrix.target }}/release/maze.exe" "labirynt-${{ matrix.target }}.exe"
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.event.head_commit.timestamp }}
+          fail_on_unmatched_files: true
+          files: labirynt-${{ matrix.target }}.exe
+
+  release-web:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    name: Build and Release - Web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/configure-pages@v2
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -51,3 +113,8 @@ jobs:
           path: ./web
       - id: deployment
         uses: actions/deploy-pages@v1
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.event.head_commit.timestamp }}
+          fail_on_unmatched_files: true
+          body: Również dostępne na [https://j-markiewicz.github.io/maze](https://j-markiewicz.github.io/maze)([/debug](https://j-markiewicz.github.io/maze/debug)).
