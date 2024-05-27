@@ -19,19 +19,20 @@ jobs:
     name: Gather and Publish License Info
     runs-on: ubuntu-latest
     steps:
+      - run: echo "TAG='$(echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g)'" >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git tag ${{ github.event.head_commit.timestamp }}
-          git push origin ${{ github.event.head_commit.timestamp }}
+          git tag ${{ env.TAG }}
+          git push origin ${{ env.TAG }}
       - run: |
           cargo install --locked cargo-about
           cargo about generate -o ATTRIBUTION.html --all-features about.hbs
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.event.head_commit.timestamp }}
+          name: ${{ env.TAG }}
           fail_on_unmatched_files: true
           files: ATTRIBUTION.html
 
@@ -57,7 +58,7 @@ jobs:
           mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.event.head_commit.timestamp }}
+          name: ${{ env.TAG }}
           fail_on_unmatched_files: true
           files: labirynt-${{ matrix.target }}
 
@@ -80,7 +81,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/maze.exe" "labirynt-${{ matrix.target }}.exe"
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.event.head_commit.timestamp }}
+          name: ${{ env.TAG }}
           fail_on_unmatched_files: true
           files: labirynt-${{ matrix.target }}.exe
 
@@ -124,7 +125,7 @@ jobs:
       - run: tar -czvf labirynt-web.tar.gz web
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.event.head_commit.timestamp }}
+          name: ${{ env.TAG }}
           fail_on_unmatched_files: true
           files: labirynt-web.tar.gz
           body: Również dostępne na [https://j-markiewicz.github.io/maze](https://j-markiewicz.github.io/maze)([/debug](https://j-markiewicz.github.io/maze/debug)).
