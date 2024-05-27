@@ -1,0 +1,24 @@
+accepted = [
+	"Unlicense",        # https://spdx.org/licenses/Unlicense
+	"CC0-1.0",          # https://spdx.org/licenses/CC0-1.0
+	"ISC",              # https://spdx.org/licenses/ISC
+	"MIT",              # https://spdx.org/licenses/MIT
+	"MIT-0",            # https://spdx.org/licenses/MIT-0
+	"BSD-2-Clause",     # https://spdx.org/licenses/BSD-2-Clause
+	"BSD-3-Clause",     # https://spdx.org/licenses/BSD-3-Clause
+	"Zlib",             # https://spdx.org/licenses/Zlib
+	"Apache-2.0",       # https://spdx.org/licenses/Apache-2.0
+	"Unicode-DFS-2016", # https://spdx.org/licenses/Unicode-DFS-2016
+]
+
+targets = [
+	"x86_64-unknown-linux-gnu",
+	"aarch64-unknown-linux-gnu",
+	"x86_64-unknown-linux-musl",
+	"aarch64-apple-darwin",
+	"x86_64-apple-darwin",
+	"x86_64-pc-windows-msvc",
+	"wasm32-unknown-unknown",
+]
+
+no-clearly-defined = true
