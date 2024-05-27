@@ -168,8 +168,8 @@ fn spawn(commands: &mut Commands, asset_server: Res<AssetServer>, params: MazePa
 				height: Val::Percent(100.0),
 				display: Display::Grid,
 				grid_template_columns: vec![GridTrack::percent(50.0); 2],
-				grid_template_rows: vec![GridTrack::percent(10.0); 10],
-				padding: UiRect::axes(Val::Percent(5.0), Val::Percent(10.0)),
+				grid_template_rows: vec![GridTrack::percent(12.0); 8],
+				padding: UiRect::axes(Val::Percent(5.0), Val::Percent(5.0)),
 				align_items: AlignItems::Center,
 				justify_content: JustifyContent::SpaceEvenly,
 				..default()
