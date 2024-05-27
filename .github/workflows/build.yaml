@@ -19,6 +19,11 @@ jobs:
     name: Gather and Publish License Info
     runs-on: ubuntu-latest
     steps:
+      - run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag ${{ github.event.head_commit.timestamp }}
+          git push origin ${{ github.event.head_commit.timestamp }}
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: |
