@@ -413,7 +413,6 @@ pub fn initialize(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 	mut images: ResMut<Assets<Image>>,
-	mut event: EventWriter<RegenerateMaze>,
 ) {
 	let wall = [&include_bytes!("../assets/maze/cave-wall.png")[..]];
 	let floor = [
@@ -482,7 +481,6 @@ pub fn initialize(
 
 	commands.insert_resource(Paths(solve_maze(&maze, exit, *params)));
 	commands.insert_resource(maze);
-	event.send(RegenerateMaze);
 }
 
 #[allow(clippy::cast_precision_loss)]
