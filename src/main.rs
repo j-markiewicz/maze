@@ -166,7 +166,6 @@ pub fn main() {
 		Startup,
 		(
 			player::initialize,
-			path::initialize,
 			maze::initialize,
 			camera::initialize,
 			ui::initialize,

@@ -12,6 +12,10 @@ Labirynt na potrzeby generacji i wizualizacji jest reprezentowany jako tablica p
 
 Do generowania labiryntu został użyty zmodyfikowany algorytm DFS, który w każdej iteracji otwiera przejście i przechodzi do losowej przylegającej pozycji (startując ze środka) lub jeśli wszystkie takie pozycje już zostały odwiedzone, to wraca do poprzedniej pozycji i próbuje ponownie. Algorytm się zakańcza kiedy wszystkie pozycje zostały odwiedzone. Dodatkowo, została dodana możliwość stworzenia "pokoi" w labiryncie, aby labirynt nie był acykliczny (pokoje to pozycje w labiryncie, które mają usunięte wszystkie ściany). Algorytm ten został wybrany, ponieważ jest dość prosty (zwłaszcza dla wybranej reprezentacji labiryntu), łatwy do zmodyfikowania, i generuje dobrze wyglądające labirynty.
 
+### Szukanie Wyjścia z Labiryntu
+
+Po generacji labiryntu stworzone jest drzewo najkrótszych ścieżek ([*shortest-path tree*](https://en.wikipedia.org/wiki/Shortest-path_tree)) przy użyciu algorytmu [Dijkstry](https://en.wikipedia.org/wiki/Dijkstra's_algorithm). Podczas wizualizacji labiryntu to drzewo jest używane aby bardzo szybko (bez ponownego przeszukania labiryntu) znaleźć najkrótszą ścieżkę z wybranej pozycji do wyjścia. Drzewo jest reprezentowane w tablicy z indeksami użytymi jako "wskaźniki" do rodziców.
+
 ## Kompilacja
 
 Aby zbudować i uruchomić aplikację do lokalnego testowania, należy użyć [`cargo run --features dynamic,debug`](https://doc.rust-lang.org/cargo/commands/cargo-run.html). Pierwsza kompilacja zajmie kilka minut, ale kolejne powinny być znacznie szybsze. Obsługa profilowania przy użyciu [Tracy](https://github.com/wolfpld/tracy) może być włączona poprzez dodanie `feature` `profile` ([`cargo run --features dynamic,profile`](https://doc.rust-lang.org/cargo/commands/cargo-run.html)).

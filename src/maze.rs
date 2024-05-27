@@ -18,7 +18,11 @@ use super::algorithms::{
 	Direction::{Bottom, Left, Right, Top},
 	MazeParams, Tile,
 };
-use crate::util::{Rand, TurboRand};
+use crate::{
+	algorithms::{solve_maze, Tree},
+	path::{self, Path},
+	util::{Rand, TurboRand},
+};
 
 pub const MAZE_SIZE: UVec2 = UVec2::splat(128);
 pub const MIN_MAZE_SIZE: u16 = 3;
@@ -100,12 +104,12 @@ impl Maze {
 		}
 	}
 
-	/// Get the tile at `(x, y)`
+	/// Get the tile at the given position
 	///
 	/// # Panic
 	/// Panics if `x` is not less than the maze's width or `y` is not less than
 	/// the maze's height
-	pub fn get(&self, x: u32, y: u32) -> Tile {
+	pub fn get(&self, TilePos { x, y }: TilePos) -> Tile {
 		assert!(x < MAZE_SIZE.x, "x must be less than the maze's width");
 		assert!(y < MAZE_SIZE.y, "y must be less than the maze's height");
 
@@ -115,7 +119,7 @@ impl Maze {
 	/// Spawn the tile at `(x, y)` at the given location
 	#[allow(clippy::too_many_arguments)]
 	pub fn spawn_tile(&self, x: u32, y: u32, loc: Vec2, commands: &mut Commands) {
-		let tile = self.get(x, y);
+		let tile = self.get(TilePos { x, y });
 
 		commands
 			.spawn((tile, TilePos { x, y }, PbrBundle {
@@ -217,23 +221,31 @@ impl Debug for Maze {
 #[derive(Debug, Clone, Copy, Component)]
 pub struct Roof;
 
+#[derive(Debug, Clone, Resource)]
+pub struct Paths(pub Tree<TilePos>);
+
 #[derive(Debug, Clone, Copy, Event)]
 pub struct RegenerateMaze;
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn regenerate(
 	mut commands: Commands,
-	tiles: Query<Entity, With<Tile>>,
+	tiles: Query<Entity, (With<Tile>, Without<Path>)>,
+	indicators: Query<Entity, (With<Path>, Without<Tile>)>,
 	mut maze: ResMut<Maze>,
 	params: Res<MazeParams>,
 	rng: Res<Rand>,
 	mut events: EventReader<RegenerateMaze>,
 	roof: Query<(Entity, &Handle<Mesh>, &Handle<StandardMaterial>), With<Roof>>,
+	mut paths: ResMut<Paths>,
 ) {
 	if !events.is_empty() {
 		events.clear();
-		maze.tiles = gen_maze(&rng, *params).into();
+		let (new_tiles, start) = gen_maze(&rng, *params);
+		maze.tiles = new_tiles.into();
+		info!("maze exit at {start:?}");
+		paths.0 = solve_maze(&maze, start, *params);
 
 		let (roof, roof_mesh, roof_material) = roof.single();
 
@@ -268,6 +280,12 @@ pub fn regenerate(
 		for tile in &tiles {
 			commands.entity(tile).despawn_recursive();
 		}
+
+		for indicator in &indicators {
+			commands.entity(indicator).despawn_recursive();
+		}
+
+		path::spawn(&mut commands, &rng, &paths);
 	}
 }
 
@@ -363,10 +381,28 @@ fn gen_tile_textures(
 	res.map(|o| o.expect("image creation failed"))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Hash)]
 pub struct TilePos {
 	pub x: u32,
 	pub y: u32,
+}
+
+impl TilePos {
+	pub const fn index(self) -> u32 {
+		self.y * MAZE_SIZE.x + self.x
+	}
+}
+
+impl From<UVec2> for TilePos {
+	fn from(UVec2 { x, y }: UVec2) -> Self {
+		Self { x, y }
+	}
+}
+
+impl From<TilePos> for UVec2 {
+	fn from(TilePos { x, y }: TilePos) -> Self {
+		Self { x, y }
+	}
 }
 
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
@@ -377,6 +413,7 @@ pub fn initialize(
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut materials: ResMut<Assets<StandardMaterial>>,
 	mut images: ResMut<Assets<Image>>,
+	mut event: EventWriter<RegenerateMaze>,
 ) {
 	let wall = [&include_bytes!("../assets/maze/cave-wall.png")[..]];
 	let floor = [
@@ -430,8 +467,9 @@ pub fn initialize(
 		})
 	});
 
+	let exit = maze.1;
 	let maze = Maze::new(
-		maze,
+		maze.0,
 		*params,
 		Box::new(textures),
 		wall_mesh,
@@ -442,7 +480,21 @@ pub fn initialize(
 		&mut commands,
 	);
 
+	commands.insert_resource(Paths(solve_maze(&maze, exit, *params)));
 	commands.insert_resource(maze);
+	event.send(RegenerateMaze);
+}
+
+#[allow(clippy::cast_precision_loss)]
+pub fn tile_position(i: u32) -> Vec2 {
+	Vec2 {
+		x: (i32::try_from(i % MAZE_SIZE.x).unwrap() - i32::try_from(MAZE_SIZE.x / 2).unwrap())
+			as f32 * TILE_SCALE
+			* TILE_SIZE.x,
+		y: (i32::try_from(i / MAZE_SIZE.x).unwrap() - i32::try_from(MAZE_SIZE.y / 2).unwrap())
+			as f32 * TILE_SCALE
+			* TILE_SIZE.y,
+	}
 }
 
 #[allow(
@@ -458,18 +510,6 @@ pub fn spawn_visible_tiles(
 	window: Query<&Window, (With<PrimaryWindow>, Without<Tile>, Without<Camera2d>)>,
 	camera: Query<&Transform, (With<Camera2d>, Changed<Transform>, Without<Tile>)>,
 ) {
-	#[allow(clippy::cast_precision_loss)]
-	fn tile_position(i: u32) -> Vec2 {
-		Vec2 {
-			x: (i32::try_from(i % MAZE_SIZE.x).unwrap() - i32::try_from(MAZE_SIZE.x / 2).unwrap())
-				as f32 * TILE_SCALE
-				* TILE_SIZE.x,
-			y: (i32::try_from(i / MAZE_SIZE.x).unwrap() - i32::try_from(MAZE_SIZE.y / 2).unwrap())
-				as f32 * TILE_SCALE
-				* TILE_SIZE.y,
-		}
-	}
-
 	let Ok(window) = window.get_single() else {
 		return;
 	};

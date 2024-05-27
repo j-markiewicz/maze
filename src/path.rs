@@ -3,7 +3,10 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use super::player::Player;
-use crate::util::{Rand, TurboRand};
+use crate::{
+	maze::{tile_position, Paths, TilePos, MAZE_SIZE},
+	util::{Rand, TurboRand},
+};
 
 const MOVEMENT_SPEED: f32 = 30.0;
 const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
@@ -12,45 +15,53 @@ const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
 pub struct Path;
 
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
-pub fn initialize(mut commands: Commands, rng: Res<Rand>) {
-	commands
-		.spawn((Path, SpatialBundle {
-			transform: Transform {
-				translation: Vec3 {
-					z: 5.0,
+pub fn spawn(commands: &mut Commands, rng: &Rand, paths: &Paths) {
+	let mut current = paths.0.search(&TilePos {
+		x: MAZE_SIZE.x / 2,
+		y: MAZE_SIZE.y / 2,
+	});
+
+	while let Some(pos) = current {
+		let idx = paths.0.get(pos).unwrap().index();
+		let Vec2 { x, y } = tile_position(idx);
+		current = paths.0.parent(pos);
+
+		commands
+			.spawn((Path, SpatialBundle {
+				transform: Transform {
+					translation: Vec3 { z: 5.0, x, y },
 					..default()
 				},
 				..default()
-			},
-			..default()
-		}))
-		.with_children(|builder| {
-			builder.spawn((
-				PointLightBundle {
-					point_light: PointLight {
-						color: Color::hsl(
-							rng.f32_normalized().mul_add(5.0, 347.7),
-							rng.f32_normalized().mul_add(0.1, 0.83),
-							rng.f32_normalized().mul_add(0.1, 0.47),
-						),
-						intensity: LIGHT_INITIAL_INTENSITY,
-						range: 1000.0,
-						shadows_enabled: true,
-						..default()
-					},
-					transform: Transform {
-						translation: Vec3 {
-							x: 0.0,
-							y: 0.0,
-							z: 0.5,
+			}))
+			.with_children(|builder| {
+				builder.spawn((
+					PointLightBundle {
+						point_light: PointLight {
+							color: Color::hsl(
+								rng.f32_normalized().mul_add(5.0, 347.7),
+								rng.f32_normalized().mul_add(0.1, 0.83),
+								rng.f32_normalized().mul_add(0.1, 0.47),
+							),
+							intensity: LIGHT_INITIAL_INTENSITY,
+							range: 1000.0,
+							shadows_enabled: true,
+							..default()
+						},
+						transform: Transform {
+							translation: Vec3 {
+								x: 0.0,
+								y: 0.0,
+								z: 0.5,
+							},
+							..default()
 						},
 						..default()
 					},
-					..default()
-				},
-				PathFlickerTimer(Timer::new(Duration::ZERO, TimerMode::Repeating)),
-			));
-		});
+					PathFlickerTimer(Timer::new(Duration::ZERO, TimerMode::Repeating)),
+				));
+			});
+	}
 }
 
 #[derive(Component, Deref, DerefMut)]
