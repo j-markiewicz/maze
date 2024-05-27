@@ -15,26 +15,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  setup:
+    name: Set Up
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        run: echo "TAG=$(echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g)" >> $GITHUB_OUTPUT
+
   licenses:
     name: Gather and Publish License Info
     runs-on: ubuntu-latest
     steps:
-      - run: echo "TAG=$(echo '${{ github.event.head_commit.timestamp }}' | sed s/:/-/g | sed s/T/./g | sed s/+/./g)" >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git tag ${{ env.TAG }}
-          git push origin ${{ env.TAG }}
+          git tag ${{ needs.setup.outputs.tag }}
+          git push origin ${{ needs.setup.outputs.tag }}
       - run: |
           cargo install --locked cargo-about
           cargo about generate -o ATTRIBUTION.html --all-features about.hbs
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.TAG }}
-          tag_name: ${{ env.TAG }}
+          name: ${{ needs.setup.outputs.tag }}
+          tag_name: ${{ needs.setup.outputs.tag }}
           fail_on_unmatched_files: true
           files: ATTRIBUTION.html
 
@@ -61,8 +69,8 @@ jobs:
           mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.TAG }}
-          tag_name: ${{ env.TAG }}
+          name: ${{ needs.setup.outputs.tag }}
+          tag_name: ${{ needs.setup.outputs.tag }}
           fail_on_unmatched_files: true
           files: labirynt-${{ matrix.target }}
 
@@ -86,8 +94,8 @@ jobs:
           cp "target/${{ matrix.target }}/release/maze.exe" "labirynt-${{ matrix.target }}.exe"
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.TAG }}
-          tag_name: ${{ env.TAG }}
+          name: ${{ needs.setup.outputs.tag }}
+          tag_name: ${{ needs.setup.outputs.tag }}
           fail_on_unmatched_files: true
           files: labirynt-${{ matrix.target }}.exe
 
@@ -131,8 +139,8 @@ jobs:
       - run: tar -czvf labirynt-web.tar.gz web
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.TAG }}
-          tag_name: ${{ env.TAG }}
+          name: ${{ needs.setup.outputs.tag }}
+          tag_name: ${{ needs.setup.outputs.tag }}
           fail_on_unmatched_files: true
           files: labirynt-web.tar.gz
           body: Również dostępne na [https://j-markiewicz.github.io/maze](https://j-markiewicz.github.io/maze)([/debug](https://j-markiewicz.github.io/maze/debug)).
