@@ -198,8 +198,6 @@ pub fn fadeout(
 	let player = player.single().translation();
 
 	for (entity, mut trans, mut light, mut timer, mut fade) in &mut query {
-		println!("fading out a path light");
-
 		timer.tick(time.delta());
 		fade.0.tick(time.delta());
 
