@@ -285,7 +285,7 @@ pub fn regenerate(
 			commands.entity(indicator).despawn_recursive();
 		}
 
-		path::spawn(&mut commands, &rng, &paths);
+		path::spawn_initial(&mut commands, &rng, &paths);
 	}
 }
 
@@ -492,6 +492,21 @@ pub fn tile_position(i: u32) -> Vec2 {
 		y: (i32::try_from(i / MAZE_SIZE.x).unwrap() - i32::try_from(MAZE_SIZE.y / 2).unwrap())
 			as f32 * TILE_SCALE
 			* TILE_SIZE.y,
+	}
+}
+
+#[allow(
+	clippy::cast_precision_loss,
+	clippy::cast_possible_truncation,
+	clippy::cast_sign_loss,
+	clippy::cast_possible_wrap
+)]
+pub fn nearest_tile(pos: Vec2) -> TilePos {
+	TilePos {
+		x: (((pos.x.floor() + MAZE_SIZE.x as f32 / 2.0) / TILE_SCALE / TILE_SIZE.x).floor() as i32
+			+ MAZE_SIZE.x as i32 / 2) as u32,
+		y: (((pos.y.floor() + MAZE_SIZE.y as f32 / 2.0) / TILE_SCALE / TILE_SIZE.y).floor() as i32
+			+ MAZE_SIZE.y as i32 / 2) as u32,
 	}
 }
 

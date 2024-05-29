@@ -4,18 +4,31 @@ use bevy::prelude::*;
 
 use super::player::Player;
 use crate::{
-	maze::{tile_position, Paths, TilePos, MAZE_SIZE, TILE_SCALE, TILE_SIZE},
-	util::{Rand, TurboRand},
+	maze::{nearest_tile, tile_position, Paths, TilePos, MAZE_SIZE, TILE_SCALE, TILE_SIZE},
+	util::{PlayerInput, Rand, TurboRand},
 };
 
 const MOVEMENT_SPEED: f32 = 30.0;
+const FADING_DURATION: f32 = 5.0;
+const SPAWNING_TIME: f32 = 2.5;
+const INPUT_MOVEMENT: f32 = 0.5;
 const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
 
 #[derive(Debug, Component)]
 pub struct Path;
 
+#[derive(Debug, Resource)]
+pub struct PathSpawnTimer(Timer);
+
+pub fn initialize(mut commands: Commands) {
+	commands.insert_resource(PathSpawnTimer(Timer::from_seconds(
+		SPAWNING_TIME,
+		TimerMode::Repeating,
+	)));
+}
+
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
-pub fn spawn(commands: &mut Commands, rng: &Rand, paths: &Paths) {
+pub fn spawn_initial(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 	let mut current = paths.0.search(&TilePos {
 		x: MAZE_SIZE.x / 2,
 		y: MAZE_SIZE.y / 2,
@@ -23,56 +36,90 @@ pub fn spawn(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 
 	while let Some(pos) = current {
 		let idx = paths.0.get(pos).unwrap().index();
-		let Vec2 { x, y } = tile_position(idx);
+		let Vec2 { mut x, mut y } = tile_position(idx);
 		current = paths.0.parent(pos);
 
-		commands
-			.spawn((Path, SpatialBundle {
+		x += rng.f32_normalized() * TILE_SIZE.x * TILE_SCALE / 4.0;
+		y += rng.f32_normalized() * TILE_SIZE.y * TILE_SCALE / 4.0;
+
+		commands.spawn((
+			Path,
+			PointLightBundle {
+				point_light: PointLight {
+					color: Color::hsl(
+						rng.f32() * 360.0,
+						rng.f32_normalized().mul_add(0.25, 0.75),
+						rng.f32_normalized().mul_add(0.25, 0.5),
+					),
+					intensity: LIGHT_INITIAL_INTENSITY,
+					range: TILE_SIZE.x * TILE_SCALE,
+					shadows_enabled: false,
+					..default()
+				},
 				transform: Transform {
 					translation: Vec3 { z: 5.0, x, y },
 					..default()
 				},
 				..default()
-			}))
-			.with_children(|builder| {
-				builder.spawn((
-					PointLightBundle {
-						point_light: PointLight {
-							color: Color::hsl(
-								rng.f32() * 360.0,
-								rng.f32_normalized().mul_add(0.25, 0.75),
-								rng.f32_normalized().mul_add(0.25, 0.5),
-							),
-							intensity: LIGHT_INITIAL_INTENSITY,
-							range: TILE_SIZE.x * TILE_SCALE,
-							shadows_enabled: false,
-							..default()
-						},
-						transform: Transform {
-							translation: Vec3 {
-								x: 0.0,
-								y: 0.0,
-								z: 0.5,
-							},
-							..default()
-						},
-						..default()
-					},
-					PathFlickerTimer(Timer::new(Duration::ZERO, TimerMode::Repeating)),
-				));
-			});
+			},
+			PathFlickerTimer(Timer::new(Duration::ZERO, TimerMode::Repeating)),
+		));
+	}
+}
+
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn spawn_more(
+	mut commands: Commands,
+	rng: Res<Rand>,
+	player: Query<&GlobalTransform, With<Player>>,
+	mut timer: ResMut<PathSpawnTimer>,
+	time: Res<Time>,
+) {
+	timer.0.tick(time.delta());
+
+	if timer.0.just_finished() {
+		let Vec3 { x, y, .. } = player.single().translation();
+
+		commands.spawn((
+			Path,
+			PointLightBundle {
+				point_light: PointLight {
+					color: Color::hsl(
+						rng.f32() * 360.0,
+						rng.f32_normalized().mul_add(0.25, 0.75),
+						rng.f32_normalized().mul_add(0.25, 0.5),
+					),
+					intensity: LIGHT_INITIAL_INTENSITY,
+					range: TILE_SIZE.x * TILE_SCALE,
+					shadows_enabled: false,
+					..default()
+				},
+				transform: Transform {
+					translation: Vec3 { z: 5.0, x, y },
+					..default()
+				},
+				..default()
+			},
+			PathFlickerTimer(Timer::new(Duration::ZERO, TimerMode::Repeating)),
+		));
 	}
 }
 
 #[derive(Component, Deref, DerefMut)]
 pub struct PathFlickerTimer(Timer);
 
+#[derive(Component, Deref, DerefMut)]
+pub struct FadingOut(Timer);
+
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn flicker(
 	time: Res<Time>,
 	rng: Res<Rand>,
 	player: Query<&GlobalTransform, (With<Player>, Without<Path>)>,
-	mut query: Query<(&mut PointLight, &mut PathFlickerTimer, &GlobalTransform)>,
+	mut query: Query<
+		(&mut PointLight, &mut PathFlickerTimer, &GlobalTransform),
+		Without<FadingOut>,
+	>,
 ) {
 	let player = player.single().translation();
 
@@ -90,16 +137,95 @@ pub fn flicker(
 	}
 }
 
-// #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
-// pub fn movement(
-// 	time: Res<Time>,
-// 	paths: Res<PathTree>,
-// 	mut query: Query<&mut Transform, With<Path>>,
-// ) {
-// 	let distance = MOVEMENT_SPEED * time.delta_seconds();
+#[allow(clippy::type_complexity)]
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn movement(
+	time: Res<Time>,
+	paths: Res<Paths>,
+	input: Res<PlayerInput>,
+	mut query: Query<(Entity, &mut Transform), (With<Path>, Without<FadingOut>)>,
+	mut commands: Commands,
+) {
+	let distance = MOVEMENT_SPEED * time.delta_seconds();
 
-// 	for mut trans in &mut query {
-// 		trans.translation.y += distance * input.up;
-// 		trans.translation.x += distance * input.right;
-// 	}
-// }
+	for (entity, mut trans) in &mut query {
+		let current_tile = nearest_tile(trans.translation.truncate());
+		let Some(next_tile) = paths
+			.0
+			.search(&current_tile)
+			.and_then(|t| paths.0.parent(t))
+			.and_then(|t| paths.0.get(t))
+			.copied()
+		else {
+			commands
+				.entity(entity)
+				.insert(FadingOut(Timer::from_seconds(
+					FADING_DURATION,
+					TimerMode::Once,
+				)));
+			continue;
+		};
+
+		let delta =
+			(tile_position(next_tile.index()) - trans.translation.truncate()).normalize_or_zero();
+
+		trans.translation.x += distance * delta.x;
+		trans.translation.y += distance * delta.y;
+
+		trans.translation.x += distance * input.right * INPUT_MOVEMENT;
+		trans.translation.y += distance * input.up * INPUT_MOVEMENT;
+	}
+}
+
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn fadeout(
+	time: Res<Time>,
+	rng: Res<Rand>,
+	mut commands: Commands,
+	mut query: Query<
+		(
+			Entity,
+			&mut Transform,
+			&mut PointLight,
+			&mut PathFlickerTimer,
+			&mut FadingOut,
+		),
+		With<Path>,
+	>,
+	player: Query<&GlobalTransform, (With<Player>, Without<Path>)>,
+) {
+	let distance = MOVEMENT_SPEED * time.delta_seconds();
+	let player = player.single().translation();
+
+	for (entity, mut trans, mut light, mut timer, mut fade) in &mut query {
+		println!("fading out a path light");
+
+		timer.tick(time.delta());
+		fade.0.tick(time.delta());
+
+		if timer.just_finished() {
+			light.intensity = LIGHT_INITIAL_INTENSITY * ((*rng).f32() + 1.0) / 2.0;
+			light.intensity *= f32::min(
+				1.0,
+				5000.0 / (trans.translation.distance_squared(player) + f32::EPSILON),
+			);
+			light.intensity *= fade.0.fraction_remaining();
+		}
+
+		if fade.0.just_finished() {
+			commands.entity(entity).despawn_recursive();
+		}
+
+		let current_tile = nearest_tile(trans.translation.truncate());
+		let outside = TilePos {
+			y: current_tile.y + 1,
+			..current_tile
+		};
+
+		let delta =
+			(tile_position(outside.index()) - trans.translation.truncate()).normalize_or_zero();
+
+		trans.translation.x += distance * delta.x;
+		trans.translation.y += distance * delta.y;
+	}
+}

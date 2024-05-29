@@ -168,6 +168,7 @@ pub fn main() {
 			player::initialize,
 			maze::initialize,
 			camera::initialize,
+			path::initialize,
 			ui::initialize,
 		),
 	);
@@ -183,6 +184,9 @@ pub fn main() {
 			player::movement,
 			player::collision.after(player::movement),
 			path::flicker,
+			path::movement,
+			path::fadeout,
+			path::spawn_more,
 			maze::regenerate,
 			maze::spawn_visible_tiles,
 			maze::despawn_invisible_tiles,
