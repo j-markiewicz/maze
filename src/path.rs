@@ -1,21 +1,24 @@
-use std::time::Duration;
+use std::{f32, time::Duration};
 
 use bevy::prelude::*;
 
 use super::player::Player;
 use crate::{
 	maze::{nearest_tile, tile_position, Paths, TilePos, MAZE_SIZE, TILE_SCALE, TILE_SIZE},
-	util::{PlayerInput, Rand, TurboRand},
+	util::{Rand, TurboRand},
 };
 
 const MOVEMENT_SPEED: f32 = 30.0;
+const ROTATION_SPEED: f32 = 0.5;
 const FADING_DURATION: f32 = 5.0;
 const SPAWNING_TIME: f32 = 2.5;
-const INPUT_MOVEMENT: f32 = 0.5;
 const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
 
 #[derive(Debug, Component)]
 pub struct Path;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct MovementDirection(Vec2);
 
 #[derive(Debug, Resource)]
 pub struct PathSpawnTimer(Timer);
@@ -44,6 +47,7 @@ pub fn spawn_initial(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 
 		commands.spawn((
 			Path,
+			MovementDirection(Vec2::NAN),
 			PointLightBundle {
 				point_light: PointLight {
 					color: Color::hsl(
@@ -82,6 +86,7 @@ pub fn spawn_more(
 
 		commands.spawn((
 			Path,
+			MovementDirection(Vec2::NAN),
 			PointLightBundle {
 				point_light: PointLight {
 					color: Color::hsl(
@@ -142,13 +147,16 @@ pub fn flicker(
 pub fn movement(
 	time: Res<Time>,
 	paths: Res<Paths>,
-	input: Res<PlayerInput>,
-	mut query: Query<(Entity, &mut Transform), (With<Path>, Without<FadingOut>)>,
+	mut query: Query<
+		(Entity, &mut Transform, &mut MovementDirection),
+		(With<Path>, Without<FadingOut>),
+	>,
 	mut commands: Commands,
 ) {
 	let distance = MOVEMENT_SPEED * time.delta_seconds();
+	let rotation = ROTATION_SPEED * time.delta_seconds();
 
-	for (entity, mut trans) in &mut query {
+	for (entity, mut trans, mut dir) in &mut query {
 		let current_tile = nearest_tile(trans.translation.truncate());
 		let Some(next_tile) = paths
 			.0
@@ -166,14 +174,20 @@ pub fn movement(
 			continue;
 		};
 
-		let delta =
-			(tile_position(next_tile.index()) - trans.translation.truncate()).normalize_or_zero();
+		let direction = tile_position(next_tile.index()) - trans.translation.truncate();
+		let direction = direction.normalize();
 
-		trans.translation.x += distance * delta.x;
-		trans.translation.y += distance * delta.y;
+		if dir.0.is_nan() {
+			dir.0 = direction;
+		}
 
-		trans.translation.x += distance * input.right * INPUT_MOVEMENT;
-		trans.translation.y += distance * input.up * INPUT_MOVEMENT;
+		let angle = dir.0.angle_between(direction).clamp(-rotation, rotation);
+
+		let direction = dir.0.rotate(Vec2::from_angle(angle));
+		dir.0 = direction;
+
+		trans.translation.x += distance * direction.x;
+		trans.translation.y += distance * direction.y;
 	}
 }
 
