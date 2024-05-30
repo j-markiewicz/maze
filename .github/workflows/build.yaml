@@ -66,7 +66,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: |
           sudo apt update
-          sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64 libasound2-dev
+          sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64 clang pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev vulkan-radeon vulkan-intel mesa-vulkan-drivers
           cargo build --release --target ${{ matrix.target }}
           mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
