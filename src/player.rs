@@ -3,11 +3,12 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use super::{
-	algorithms::{
+	maze::{
+		self,
 		Direction::{Bottom, Left, Right, Top},
 		Tile,
 	},
-	maze, PlayerInput,
+	PlayerInput,
 };
 use crate::util::{Rand, TurboRand};
 
@@ -18,7 +19,6 @@ const TILE_SCALE: f32 = 2.0;
 const TILE_FRAME_TIME_SECONDS: f32 = 0.1;
 
 const MOVEMENT_SPEED: f32 = 150.0;
-
 const LIGHT_INITIAL_INTENSITY: f32 = 50_000_000_000.0;
 
 #[derive(Debug, Component)]

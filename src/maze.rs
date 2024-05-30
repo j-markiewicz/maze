@@ -3,6 +3,7 @@ use std::{
 	f32::consts::PI,
 	fmt::{Debug, Formatter, Result as FmtResult},
 	iter,
+	ops::Neg,
 };
 
 use bevy::{
@@ -14,11 +15,8 @@ use bevy::{
 };
 use image::{imageops, load_from_memory, RgbaImage};
 
-use super::algorithms::{
-	gen_maze,
-	Direction::{Bottom, Left, Right, Top},
-	MazeParams, Tile,
-};
+use self::Direction::{Bottom, Left, Right, Top};
+use super::algorithms::{gen_maze, MazeParams};
 use crate::{
 	algorithms::{gen_rooms, solve_maze, Tree},
 	path::{self, Path},
@@ -216,6 +214,80 @@ impl Maze {
 impl Debug for Maze {
 	fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
 		f.debug_struct("Maze").finish_non_exhaustive()
+	}
+}
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Tile(pub u8);
+
+impl Tile {
+	/// Fully closed stone tile
+	pub const CLOSED: Self = Self(0b1111_1111);
+	/// Fully open stone tile
+	pub const OPEN: Self = Self(0);
+
+	pub fn grass(rng: &Rand) -> Self {
+		Self(rng.u8(0..0xf) << 4 | 0b1111)
+	}
+
+	/// Open the given `side` of this Tile
+	pub fn open(&mut self, side: Direction) -> &mut Self {
+		match side {
+			Direction::Top => self.0 &= 0b1111_0111,
+			Direction::Right => self.0 &= 0b1111_1011,
+			Direction::Bottom => self.0 &= 0b1111_1101,
+			Direction::Left => self.0 &= 0b1111_1110,
+		}
+
+		self
+	}
+
+	/// Whether the given `side` of this Tile is open
+	pub const fn is_open(self, side: Direction) -> bool {
+		!self.is_grass()
+			&& match side {
+				Direction::Top => self.0 & 0b1000 == 0,
+				Direction::Right => self.0 & 0b0100 == 0,
+				Direction::Bottom => self.0 & 0b0010 == 0,
+				Direction::Left => self.0 & 0b0001 == 0,
+			}
+	}
+
+	/// Whether the given `side` of this Tile is closed
+	pub const fn is_closed(self, side: Direction) -> bool {
+		!self.is_open(side)
+	}
+
+	/// Whether this tile is grass
+	pub const fn is_grass(self) -> bool {
+		self.0 & 0b1111 == 0b1111 && self.0 != Self::CLOSED.0
+	}
+}
+
+impl Default for Tile {
+	fn default() -> Self {
+		Self::CLOSED
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+	Top,
+	Right,
+	Bottom,
+	Left,
+}
+
+impl Neg for Direction {
+	type Output = Self;
+
+	fn neg(self) -> Self::Output {
+		match self {
+			Self::Top => Self::Bottom,
+			Self::Right => Self::Left,
+			Self::Bottom => Self::Top,
+			Self::Left => Self::Right,
+		}
 	}
 }
 
