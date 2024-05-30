@@ -179,9 +179,9 @@ pub fn movement(
 			.and_then(|t| paths.0.get(t))
 			.copied()
 		else {
-			commands
+			let _ = commands
 				.entity(entity)
-				.insert(FadingOut(Timer::from_seconds(
+				.try_insert(FadingOut(Timer::from_seconds(
 					FADING_DURATION,
 					TimerMode::Once,
 				)));
