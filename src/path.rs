@@ -191,6 +191,7 @@ pub fn movement(
 	}
 }
 
+#[allow(clippy::type_complexity)]
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 pub fn fadeout(
 	time: Res<Time>,
@@ -203,15 +204,17 @@ pub fn fadeout(
 			&mut PointLight,
 			&mut PathFlickerTimer,
 			&mut FadingOut,
+			&mut MovementDirection,
 		),
 		With<Path>,
 	>,
 	player: Query<&GlobalTransform, (With<Player>, Without<Path>)>,
 ) {
 	let distance = MOVEMENT_SPEED * time.delta_seconds();
+	let rotation = ROTATION_SPEED * time.delta_seconds();
 	let player = player.single().translation();
 
-	for (entity, mut trans, mut light, mut timer, mut fade) in &mut query {
+	for (entity, mut trans, mut light, mut timer, mut fade, mut dir) in &mut query {
 		timer.tick(time.delta());
 		fade.0.tick(time.delta());
 
@@ -234,10 +237,19 @@ pub fn fadeout(
 			..current_tile
 		};
 
-		let delta =
-			(tile_position(outside.index()) - trans.translation.truncate()).normalize_or_zero();
+		let direction = tile_position(outside.index()) - trans.translation.truncate();
+		let direction = direction.normalize();
 
-		trans.translation.x += distance * delta.x;
-		trans.translation.y += distance * delta.y;
+		if dir.0.is_nan() {
+			dir.0 = direction;
+		}
+
+		let angle = dir.0.angle_between(direction).clamp(-rotation, rotation);
+
+		let direction = dir.0.rotate(Vec2::from_angle(angle));
+		dir.0 = direction;
+
+		trans.translation.x += distance * direction.x;
+		trans.translation.y += distance * direction.y;
 	}
 }
