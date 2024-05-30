@@ -250,7 +250,7 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> Tree<TileP
 	//    called the unvisited set.
 	let mut unvisited = (params.margin_x()..params.margin_x() + params.width())
 		.flat_map(|x| {
-			(params.margin_y()..params.margin_y() + params.width()).map(move |y| TilePos { x, y })
+			(params.margin_y()..params.margin_y() + params.height()).map(move |y| TilePos { x, y })
 		})
 		.collect::<HashSet<_>>();
 
