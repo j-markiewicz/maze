@@ -2,7 +2,13 @@
 
 Projekt na AiSD 2 (2023/24). Również dostępny na <https://j-markiewicz.github.io/maze>.
 
-## Algorytmy i Struktury Danych
+## Działanie Programu
+
+### Wejścia Programu
+
+Program poprzez menu (TAB lub ESC) pobiera szerokość i wysokość labiryntu oraz ilość "pokoi", czyli pozycji w labiryncie całkowicie otwartych (istnienie takich pokoi powoduje, że labirynt nie jest acykliczny). Dodatkowo można ustalić tendencyjność kierunkową labiryntu, co powoduje generacje labiryntu z innym wyglądem.
+
+Minimalna szerokość lub wysokość labiryntu to 3, maksymalna to 100.
 
 ### Reprezentacja Labiryntu
 
