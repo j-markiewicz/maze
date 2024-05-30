@@ -1,11 +1,17 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
+#![cfg_attr(not(feature = "debug"), forbid(unsafe_code))]
 #![allow(clippy::needless_pass_by_value)] // A bunch of Bevy things require this
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::tabs_in_doc_comments)]
 
+#[cfg(all(
+	feature = "debug",
+	not(all(target_arch = "wasm32", not(target_feature = "atomics")))
+))]
+use std::alloc::System;
 use std::{
 	backtrace::{Backtrace, BacktraceStatus},
 	panic::PanicInfo,
@@ -34,15 +40,39 @@ use tracing_web::{performance_layer, MakeConsoleWriter};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+#[cfg(all(
+	feature = "debug",
+	not(all(target_arch = "wasm32", not(target_feature = "atomics")))
+))]
+use crate::util::TrackingAlloc;
 use crate::{
 	algorithms::MazeParams,
 	maze::RegenerateMaze,
 	util::{input, PlayerInput, Rand},
 };
 
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[cfg(all(
+	not(feature = "debug"),
+	target_arch = "wasm32",
+	not(target_feature = "atomics")
+))]
 #[global_allocator]
 static ALLOC: SmallGlobalTlsf = SmallGlobalTlsf::new();
+
+#[cfg(all(
+	feature = "debug",
+	target_arch = "wasm32",
+	not(target_feature = "atomics")
+))]
+#[global_allocator]
+pub static ALLOC: TrackingAlloc<SmallGlobalTlsf> = TrackingAlloc::new(SmallGlobalTlsf::new());
+
+#[cfg(all(
+	feature = "debug",
+	not(all(target_arch = "wasm32", not(target_feature = "atomics")))
+))]
+#[global_allocator]
+pub static ALLOC: TrackingAlloc<System> = TrackingAlloc::new(System);
 
 mod algorithms;
 mod camera;
@@ -157,6 +187,7 @@ pub fn main() {
 		ScreenDiagnosticsPlugin::default(),
 		ScreenFrameDiagnosticsPlugin,
 		ScreenEntityDiagnosticsPlugin,
+		util::LogMemoryUsagePlugin,
 	));
 
 	app.add_systems(PostStartup, events::initialized);

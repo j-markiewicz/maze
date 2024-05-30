@@ -2,6 +2,11 @@
 
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
 use std::fmt::{Error as FmtError, Result as FmtResult};
+#[cfg(feature = "debug")]
+use std::{
+	alloc::{GlobalAlloc, Layout},
+	sync::atomic::{AtomicUsize, Ordering},
+};
 
 use bevy::prelude::*;
 #[cfg(all(feature = "console_log", target_arch = "wasm32"))]
@@ -230,5 +235,102 @@ impl<S> Filter<S> for LogFilter {
 
 	fn max_level_hint(&self) -> Option<LevelFilter> {
 		Some(LevelFilter::DEBUG)
+	}
+}
+
+#[cfg(feature = "debug")]
+#[derive(Debug)]
+pub struct LogMemoryUsagePlugin;
+
+#[cfg(feature = "debug")]
+impl Plugin for LogMemoryUsagePlugin {
+	fn name(&self) -> &str {
+		"log memory usage"
+	}
+
+	fn build(&self, app: &mut App) {
+		#[derive(Debug, Resource)]
+		struct MemoryTimer(Timer);
+
+		fn track_memory_usage(time: Res<Time>, mut timer: ResMut<MemoryTimer>) {
+			timer.0.tick(time.delta());
+
+			if timer.0.just_finished() {
+				let allocated_bytes = crate::ALLOC.allocated_bytes.load(Ordering::Relaxed);
+				let allocated = allocated_bytes / 1024 / 1024;
+				info!(%allocated_bytes, "currently allocated memory: {allocated} MB");
+			}
+		}
+
+		app.insert_resource(MemoryTimer(Timer::from_seconds(1.0, TimerMode::Repeating)));
+		app.add_systems(Update, track_memory_usage);
+	}
+}
+
+#[cfg(feature = "debug")]
+pub struct TrackingAlloc<A: GlobalAlloc> {
+	underlying: A,
+	allocated_bytes: AtomicUsize,
+}
+
+#[cfg(feature = "debug")]
+impl<A: GlobalAlloc> TrackingAlloc<A> {
+	pub const fn new(allocator: A) -> Self {
+		Self {
+			underlying: allocator,
+			allocated_bytes: AtomicUsize::new(0),
+		}
+	}
+}
+
+#[cfg(feature = "debug")]
+#[allow(unsafe_code)]
+// SAFETY: This impl directly forwards to the `GlobalAlloc` impl of `A`
+unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAlloc<A> {
+	#[allow(unsafe_code)]
+	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+		self.allocated_bytes
+			.fetch_add(layout.size(), Ordering::Relaxed);
+
+		// SAFETY: This method has the exact same preconditions as the current method,
+		// which the caller must uphold
+		unsafe { self.underlying.alloc(layout) }
+	}
+
+	#[allow(unsafe_code)]
+	unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+		self.allocated_bytes
+			.fetch_add(layout.size(), Ordering::Relaxed);
+
+		// SAFETY: This method has the exact same preconditions as the current method,
+		// which the caller must uphold
+		self.underlying.alloc_zeroed(layout)
+	}
+
+	#[allow(unsafe_code)]
+	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+		let difference = layout.size().abs_diff(new_size);
+
+		if layout.size() > new_size {
+			self.allocated_bytes
+				.fetch_sub(difference, Ordering::Relaxed);
+		} else {
+			self.allocated_bytes
+				.fetch_add(difference, Ordering::Relaxed);
+		}
+
+		// SAFETY: This method has the exact same preconditions as the current method,
+		// which the caller must uphold
+		self.underlying.realloc(ptr, layout, new_size)
+	}
+
+	#[allow(unsafe_code)]
+	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+		self.allocated_bytes
+			.fetch_sub(layout.size(), Ordering::Relaxed);
+
+		// SAFETY: This method has the exact same preconditions as the current method,
+		// which the caller must uphold
+		self.underlying.dealloc(ptr, layout);
 	}
 }
