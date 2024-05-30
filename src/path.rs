@@ -13,6 +13,7 @@ const ROTATION_SPEED: f32 = 0.5;
 const FADING_DURATION: f32 = 5.0;
 const SPAWNING_TIME: f32 = 2.5;
 const LIGHT_INITIAL_INTENSITY: f32 = 500_000_000.0;
+const INITIAL_LIGHTS_LIMIT: u32 = 50;
 
 #[derive(Debug, Component)]
 pub struct Path;
@@ -37,7 +38,20 @@ pub fn spawn_initial(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 		y: MAZE_SIZE.y / 2,
 	});
 
+	let mut limit = INITIAL_LIGHTS_LIMIT;
+
 	while let Some(pos) = current {
+		if limit > INITIAL_LIGHTS_LIMIT / 2 {
+			limit -= 1;
+		} else if limit > 0 {
+			if limit % 2 == 0 {
+				limit -= 1;
+				continue;
+			}
+		} else {
+			break;
+		}
+
 		let idx = paths.0.get(pos).unwrap().index();
 		let Vec2 { mut x, mut y } = tile_position(idx);
 		current = paths.0.parent(pos);
