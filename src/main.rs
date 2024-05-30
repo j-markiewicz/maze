@@ -192,6 +192,7 @@ pub fn main() {
 			maze::despawn_invisible_tiles,
 			ui::focus,
 			ui::click,
+			ui::select,
 			ui::update,
 		),
 	);

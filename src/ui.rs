@@ -4,9 +4,12 @@ use bevy_simple_text_input::{
 };
 
 use crate::{
-	algorithms::MazeParams,
+	algorithms::{DirectionalBias, MazeParams},
 	maze::{RegenerateMaze, MAX_MAZE_SIZE, MIN_MAZE_SIZE},
 };
+
+const ACTIVE_SELECTOR_COLOR: Color = Color::WHITE;
+const INACTIVE_SELECTOR_COLOR: Color = Color::BLACK;
 
 #[derive(Debug, Clone, Copy, Resource)]
 pub struct Ui(Option<Entity>);
@@ -15,6 +18,22 @@ pub struct Ui(Option<Entity>);
 pub enum UiButton {
 	Generate,
 	Close,
+}
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct UiSelector(pub DirectionalBias);
+
+impl UiSelector {
+	pub fn text(self) -> String {
+		match self.0 {
+			DirectionalBias::None => "+",
+			DirectionalBias::Vertical => "|",
+			DirectionalBias::Horizontal => "-",
+			DirectionalBias::VeryVertical => "||",
+			DirectionalBias::VeryHorizontal => "--",
+		}
+		.to_string()
+	}
 }
 
 #[derive(Debug, Clone, Copy, Component)]
@@ -108,6 +127,25 @@ pub fn click(
 	}
 }
 
+#[allow(clippy::type_complexity)]
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn select(
+	mut query: Query<(&Interaction, &UiSelector, &mut BorderColor)>,
+	mut maze_params: ResMut<MazeParams>,
+) {
+	for (interaction, selector, mut color) in &mut query {
+		if *interaction == Interaction::Pressed {
+			maze_params.bias = selector.0;
+		}
+
+		if selector.0 == maze_params.bias {
+			color.0 = ACTIVE_SELECTOR_COLOR;
+		} else {
+			color.0 = INACTIVE_SELECTOR_COLOR;
+		}
+	}
+}
+
 pub fn focus(
 	query: Query<(Entity, &Interaction), Changed<Interaction>>,
 	mut text_inputs: Query<(Entity, &mut TextInputInactive)>,
@@ -139,6 +177,7 @@ pub fn update(
 	}
 }
 
+#[allow(clippy::too_many_lines)]
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 fn spawn(commands: &mut Commands, asset_server: Res<AssetServer>, params: MazeParams) -> Entity {
 	let menu = asset_server.load("maze/menu.png");
@@ -214,6 +253,55 @@ fn spawn(commands: &mut Commands, asset_server: Res<AssetServer>, params: MazePa
 					kind,
 				));
 			}
+
+			builder.spawn(TextBundle {
+				style: elem_style(1, 5),
+				text: Text::from_section("Typ", text_style.clone()),
+				..default()
+			});
+
+			builder
+				.spawn(NodeBundle {
+					style: Style {
+						display: Display::Flex,
+						flex_direction: FlexDirection::Row,
+						align_items: AlignItems::Center,
+						justify_content: JustifyContent::SpaceBetween,
+						..elem_style(2, 5)
+					},
+					..default()
+				})
+				.with_children(|builder| {
+					use DirectionalBias::{
+						Horizontal, None, Vertical, VeryHorizontal, VeryVertical,
+					};
+
+					for bias in [VeryHorizontal, Horizontal, None, Vertical, VeryVertical] {
+						let selector = UiSelector(bias);
+
+						builder
+							.spawn((selector, ButtonBundle {
+								style: Style {
+									width: Val::Percent(20.0),
+									aspect_ratio: Some(1.0),
+									align_items: AlignItems::Center,
+									justify_content: JustifyContent::Center,
+									padding: UiRect::all(Val::Px(5.0)),
+									border: UiRect::all(Val::Px(5.0)),
+									..default()
+								},
+								background_color: BackgroundColor(Color::BLACK),
+								border_color: BorderColor(INACTIVE_SELECTOR_COLOR),
+								..default()
+							}))
+							.with_children(|parent| {
+								let mut style = text_style.clone();
+								style.font_size /= 2.0;
+
+								parent.spawn(TextBundle::from_section(selector.text(), style));
+							});
+					}
+				});
 
 			builder
 				.spawn((
