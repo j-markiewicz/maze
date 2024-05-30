@@ -76,7 +76,7 @@ impl RunEvent {
 	/// fails
 	#[must_use]
 	#[cfg(target_arch = "wasm32")]
-	pub fn into_js(&self) -> Event {
+	pub fn to_js(&self) -> Event {
 		CustomEvent::new_with_event_init_dict(
 			self.name(),
 			CustomEventInit::new().detail(&self.details()),
