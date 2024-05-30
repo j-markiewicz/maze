@@ -2,6 +2,7 @@ use std::{
 	array,
 	f32::consts::PI,
 	fmt::{Debug, Formatter, Result as FmtResult},
+	iter,
 };
 
 use bevy::{
@@ -19,7 +20,7 @@ use super::algorithms::{
 	MazeParams, Tile,
 };
 use crate::{
-	algorithms::{solve_maze, Tree},
+	algorithms::{gen_rooms, solve_maze, Tree},
 	path::{self, Path},
 	util::{Rand, TurboRand},
 };
@@ -242,7 +243,12 @@ pub fn regenerate(
 ) {
 	if !events.is_empty() {
 		events.clear();
-		let (new_tiles, start) = gen_maze(&rng, *params);
+
+		let mut new_tiles = prepare_maze(&rng, *params);
+		let start = gen_maze(&mut new_tiles, &rng, *params);
+		gen_rooms(&mut new_tiles, &rng, *params);
+		adjust_maze_textures(&mut new_tiles, *params);
+
 		maze.tiles = new_tiles.into();
 		info!("maze exit at {start:?}");
 		paths.0 = solve_maze(&maze, start, *params);
@@ -451,7 +457,10 @@ pub fn initialize(
 		..default()
 	});
 
-	let maze = gen_maze(&rng, *params);
+	let mut maze = prepare_maze(&rng, *params);
+	let exit = gen_maze(&mut maze, &rng, *params);
+	gen_rooms(&mut maze, &rng, *params);
+	adjust_maze_textures(&mut maze, *params);
 
 	let textures = gen_tile_textures(&wall, &floor, &grass, &mut images, &rng).map(|h| {
 		materials.add(StandardMaterial {
@@ -466,9 +475,8 @@ pub fn initialize(
 		})
 	});
 
-	let exit = maze.1;
 	let maze = Maze::new(
-		maze.0,
+		maze,
 		*params,
 		Box::new(textures),
 		wall_mesh,
@@ -481,6 +489,118 @@ pub fn initialize(
 
 	commands.insert_resource(Paths(solve_maze(&maze, exit, *params)));
 	commands.insert_resource(maze);
+}
+
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+fn prepare_maze(rng: &Rand, params: MazeParams) -> Vec<Tile> {
+	let us = |u32: u32| -> usize { u32.try_into().unwrap() };
+	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
+
+	let mut maze = iter::from_fn(|| Some(Tile::grass(rng)))
+		.take(us(MAZE_SIZE.x) * us(MAZE_SIZE.y))
+		.collect::<Vec<_>>();
+
+	for x in params.margin_x()..params.margin_x() + params.width() {
+		for y in params.margin_y()..params.margin_y() + params.height() {
+			maze[idx(UVec2::new(x, y))] = Tile::CLOSED;
+		}
+	}
+
+	maze
+}
+
+pub fn adjust_maze_textures(maze: &mut [Tile], params: MazeParams) {
+	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
+
+	for x in params.margin_x() - 1..=params.margin_x() + params.width() {
+		let pos = UVec2::new(x, params.margin_y() + params.height());
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Left);
+		maze[idx(pos)].open(Right);
+
+		let pos = UVec2::new(x, params.margin_y() - 1);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Left);
+		maze[idx(pos)].open(Right);
+	}
+
+	for y in params.margin_y() - 1..=params.margin_y() + params.height() {
+		let pos = UVec2::new(params.margin_x() + params.width(), y);
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Right);
+
+		let pos = UVec2::new(params.margin_x() - 1, y);
+		maze[idx(pos)].open(Top);
+		maze[idx(pos)].open(Bottom);
+		maze[idx(pos)].open(Left);
+	}
+
+	for i in 0..maze.len() {
+		maze[i].0 = tile_bits(i, maze);
+	}
+
+	for x in params.margin_x() - 1..=params.margin_x() + params.width() {
+		let pos = UVec2::new(x, params.margin_y() + params.height());
+		maze[idx(pos)].0 &= 0b0011_1111;
+
+		let pos = UVec2::new(x, params.margin_y() - 1);
+		maze[idx(pos)].0 &= 0b1100_1111;
+	}
+
+	for y in params.margin_y() - 1..=params.margin_y() + params.height() {
+		let pos = UVec2::new(params.margin_x() + params.width(), y);
+		maze[idx(pos)].0 &= 0b1010_1111;
+
+		let pos = UVec2::new(params.margin_x() - 1, y);
+		maze[idx(pos)].0 &= 0b0101_1111;
+	}
+}
+
+pub fn tile_bits(i: usize, maze: &[Tile]) -> u8 {
+	let tile = maze[i];
+	if tile.is_grass() {
+		return tile.0;
+	}
+
+	let maze_size = (
+		usize::try_from(MAZE_SIZE.x).unwrap(),
+		usize::try_from(MAZE_SIZE.y).unwrap(),
+	);
+
+	let tile_is_edge = !(maze_size.0..=(maze_size.1 - 1) * maze_size.0).contains(&i)
+		|| i % maze_size.0 == 0
+		|| i % maze_size.0 == maze_size.0 - 1;
+
+	let mut res = tile.0 & 0b1111;
+
+	if !tile_is_edge {
+		if maze[i.saturating_sub(1)].is_closed(Top)
+			|| maze[i.saturating_add(maze_size.0)].is_closed(Left)
+		{
+			res |= 0b1000_0000;
+		}
+
+		if maze[i.saturating_add(1)].is_closed(Top)
+			|| maze[i.saturating_add(maze_size.0)].is_closed(Right)
+		{
+			res |= 0b0100_0000;
+		}
+
+		if maze[i.saturating_sub(1)].is_closed(Bottom)
+			|| maze[i.saturating_sub(maze_size.0)].is_closed(Left)
+		{
+			res |= 0b0010_0000;
+		}
+
+		if maze[i.saturating_add(1)].is_closed(Bottom)
+			|| maze[i.saturating_sub(maze_size.0)].is_closed(Right)
+		{
+			res |= 0b0001_0000;
+		}
+	}
+
+	res
 }
 
 #[allow(clippy::cast_precision_loss)]

@@ -1,4 +1,4 @@
-use std::{iter, ops::Neg};
+use std::ops::Neg;
 
 #[cfg(feature = "debug")]
 use bevy::log::debug;
@@ -120,24 +120,14 @@ pub fn next_maze(
 }
 
 #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
-pub fn gen_maze(rng: &Rand, params: MazeParams) -> (Vec<Tile>, TilePos) {
+pub fn gen_maze(maze: &mut [Tile], rng: &Rand, params: MazeParams) -> TilePos {
 	let us = |u32: u32| -> usize { u32.try_into().unwrap() };
 	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
-
-	let mut maze = iter::from_fn(|| Some(Tile::grass(rng)))
-		.take(us(MAZE_SIZE.x) * us(MAZE_SIZE.y))
-		.collect::<Vec<_>>();
 
 	let mut pos = MAZE_SIZE / 2;
 	let mut visited = Vec::with_capacity(us(params.width()) * us(params.height()));
 	visited.push(pos);
 	let mut route = vec![pos];
-
-	for x in params.margin_x()..params.margin_x() + params.width() {
-		for y in params.margin_y()..params.margin_y() + params.height() {
-			maze[idx(UVec2::new(x, y))] = Tile::CLOSED;
-		}
-	}
 
 	loop {
 		let Some((next, dir)) = next_maze(pos, &visited, rng, params) else {
@@ -167,6 +157,20 @@ pub fn gen_maze(rng: &Rand, params: MazeParams) -> (Vec<Tile>, TilePos) {
 		}
 	}
 
+	let exit = UVec2::new(
+		rng.u32(params.margin_x()..params.margin_x() + params.width()),
+		params.margin_y() + params.height() - 1,
+	);
+	maze[idx(exit + UVec2::Y)].open(Bottom);
+	maze[idx(exit)].open(Top);
+
+	exit.into()
+}
+
+#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+pub fn gen_rooms(maze: &mut [Tile], rng: &Rand, params: MazeParams) {
+	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
+
 	if params.rooms > 0 {
 		for pos in rng
 			.sample_multiple_iter(
@@ -190,59 +194,6 @@ pub fn gen_maze(rng: &Rand, params: MazeParams) -> (Vec<Tile>, TilePos) {
 			}
 		}
 	}
-
-	let exit = UVec2::new(
-		rng.u32(params.margin_x()..params.margin_x() + params.width()),
-		params.margin_y() + params.height() - 1,
-	);
-	maze[idx(exit + UVec2::Y)].open(Bottom);
-	maze[idx(exit)].open(Top);
-
-	for x in params.margin_x() - 1..=params.margin_x() + params.width() {
-		let pos = UVec2::new(x, params.margin_y() + params.height());
-		maze[idx(pos)].open(Top);
-		maze[idx(pos)].open(Left);
-		maze[idx(pos)].open(Right);
-
-		let pos = UVec2::new(x, params.margin_y() - 1);
-		maze[idx(pos)].open(Bottom);
-		maze[idx(pos)].open(Left);
-		maze[idx(pos)].open(Right);
-	}
-
-	for y in params.margin_y() - 1..=params.margin_y() + params.height() {
-		let pos = UVec2::new(params.margin_x() + params.width(), y);
-		maze[idx(pos)].open(Top);
-		maze[idx(pos)].open(Bottom);
-		maze[idx(pos)].open(Right);
-
-		let pos = UVec2::new(params.margin_x() - 1, y);
-		maze[idx(pos)].open(Top);
-		maze[idx(pos)].open(Bottom);
-		maze[idx(pos)].open(Left);
-	}
-
-	for i in 0..maze.len() {
-		maze[i].0 = tile_bits(i, &maze);
-	}
-
-	for x in params.margin_x() - 1..=params.margin_x() + params.width() {
-		let pos = UVec2::new(x, params.margin_y() + params.height());
-		maze[idx(pos)].0 &= 0b0011_1111;
-
-		let pos = UVec2::new(x, params.margin_y() - 1);
-		maze[idx(pos)].0 &= 0b1100_1111;
-	}
-
-	for y in params.margin_y() - 1..=params.margin_y() + params.height() {
-		let pos = UVec2::new(params.margin_x() + params.width(), y);
-		maze[idx(pos)].0 &= 0b1010_1111;
-
-		let pos = UVec2::new(params.margin_x() - 1, y);
-		maze[idx(pos)].0 &= 0b0101_1111;
-	}
-
-	(maze, exit.into())
 }
 
 #[derive(Debug, Clone)]
@@ -375,52 +326,6 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> Tree<TileP
 	//    target node distance is infinity, no path exists.
 
 	tree
-}
-
-fn tile_bits(i: usize, maze: &[Tile]) -> u8 {
-	let tile = maze[i];
-	if tile.is_grass() {
-		return tile.0;
-	}
-
-	let maze_size = (
-		usize::try_from(MAZE_SIZE.x).unwrap(),
-		usize::try_from(MAZE_SIZE.y).unwrap(),
-	);
-
-	let tile_is_edge = !(maze_size.0..=(maze_size.1 - 1) * maze_size.0).contains(&i)
-		|| i % maze_size.0 == 0
-		|| i % maze_size.0 == maze_size.0 - 1;
-
-	let mut res = tile.0 & 0b1111;
-
-	if !tile_is_edge {
-		if maze[i.saturating_sub(1)].is_closed(Top)
-			|| maze[i.saturating_add(maze_size.0)].is_closed(Left)
-		{
-			res |= 0b1000_0000;
-		}
-
-		if maze[i.saturating_add(1)].is_closed(Top)
-			|| maze[i.saturating_add(maze_size.0)].is_closed(Right)
-		{
-			res |= 0b0100_0000;
-		}
-
-		if maze[i.saturating_sub(1)].is_closed(Bottom)
-			|| maze[i.saturating_sub(maze_size.0)].is_closed(Left)
-		{
-			res |= 0b0010_0000;
-		}
-
-		if maze[i.saturating_add(1)].is_closed(Bottom)
-			|| maze[i.saturating_sub(maze_size.0)].is_closed(Right)
-		{
-			res |= 0b0001_0000;
-		}
-	}
-
-	res
 }
 
 #[derive(Debug, Clone, Copy, Component)]
