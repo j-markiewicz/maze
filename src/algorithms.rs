@@ -167,25 +167,27 @@ pub fn gen_maze(rng: &Rand, params: MazeParams) -> (Vec<Tile>, TilePos) {
 		}
 	}
 
-	for pos in rng
-		.sample_multiple_iter(
-			(params.margin_x() + 1..params.margin_x() + params.width() - 1).flat_map(|x| {
-				(params.margin_y() + 1..params.margin_y() + params.height() - 1)
-					.map(move |y| UVec2 { x, y })
-			}),
-			params.rooms.into(),
-		)
-		.into_iter()
-		.chain([MAZE_SIZE / 2])
-	{
-		maze[idx(pos)]
-			.open(Direction::Top)
-			.open(Direction::Right)
-			.open(Direction::Bottom)
-			.open(Direction::Left);
+	if params.rooms > 0 {
+		for pos in rng
+			.sample_multiple_iter(
+				(params.margin_x() + 1..params.margin_x() + params.width() - 1).flat_map(|x| {
+					(params.margin_y() + 1..params.margin_y() + params.height() - 1)
+						.map(move |y| UVec2 { x, y })
+				}),
+				(params.rooms - 1).into(),
+			)
+			.into_iter()
+			.chain([MAZE_SIZE / 2])
+		{
+			maze[idx(pos)]
+				.open(Direction::Top)
+				.open(Direction::Right)
+				.open(Direction::Bottom)
+				.open(Direction::Left);
 
-		for (pos, dir) in neighbors(pos, params) {
-			maze[idx(pos)].open(-dir);
+			for (pos, dir) in neighbors(pos, params) {
+				maze[idx(pos)].open(-dir);
+			}
 		}
 	}
 
