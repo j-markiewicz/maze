@@ -38,23 +38,20 @@ pub fn spawn_initial(commands: &mut Commands, rng: &Rand, paths: &Paths) {
 		y: MAZE_SIZE.y / 2,
 	});
 
-	let mut limit = INITIAL_LIGHTS_LIMIT;
+	let mut limit = 2 * INITIAL_LIGHTS_LIMIT;
 
 	while let Some(pos) = current {
-		if limit > INITIAL_LIGHTS_LIMIT / 2 {
-			limit -= 1;
-		} else if limit > 0 {
-			if limit % 2 == 0 {
-				limit -= 1;
-				continue;
-			}
-		} else {
-			break;
-		}
-
 		let idx = paths.0.get(pos).unwrap().index();
 		let Vec2 { mut x, mut y } = tile_position(idx);
 		current = paths.0.parent(pos);
+
+		limit -= 1;
+
+		if limit == 0 {
+			break;
+		} else if limit % 2 == 0 {
+			continue;
+		}
 
 		x += rng.f32_normalized() * TILE_SIZE.x * TILE_SCALE / 4.0;
 		y += rng.f32_normalized() * TILE_SIZE.y * TILE_SCALE / 4.0;
