@@ -127,7 +127,7 @@ pub fn loaded(game: &'static str) {
 		#[cfg(target_arch = "wasm32")]
 		web_sys::window()
 			.expect("JS `window` not available")
-			.dispatch_event(&event.into_js())
+			.dispatch_event(&event.to_js())
 			.expect("JS `dispatchEvent` failed");
 
 		info!("{event}");
@@ -151,7 +151,7 @@ pub fn initialized() {
 		#[cfg(target_arch = "wasm32")]
 		web_sys::window()
 			.expect("JS `window` not available")
-			.dispatch_event(&event.into_js())
+			.dispatch_event(&event.to_js())
 			.expect("JS `dispatchEvent` failed");
 
 		info!("{event}");
@@ -180,7 +180,7 @@ pub fn started() {
 			#[cfg(target_arch = "wasm32")]
 			web_sys::window()
 				.expect("JS `window` not available")
-				.dispatch_event(&event.into_js())
+				.dispatch_event(&event.to_js())
 				.expect("JS `dispatchEvent` failed");
 
 			info!("{event}");
@@ -203,7 +203,7 @@ pub fn panic(info: String) {
 	#[cfg(target_arch = "wasm32")]
 	web_sys::window()
 		.expect("JS `window` not available")
-		.dispatch_event(&event.into_js())
+		.dispatch_event(&event.to_js())
 		.expect("JS `dispatchEvent` failed");
 
 	error!("{event}");
