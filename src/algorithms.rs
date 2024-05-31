@@ -143,7 +143,7 @@ pub fn next_maze(
 }
 
 /// Generate the maze
-#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+#[cfg_attr(feature = "debug", tracing::instrument(skip(maze, rng)))]
 pub fn gen_maze(maze: &mut [Tile], rng: &Rand, params: MazeParams) -> TilePos {
 	let us = |u32: u32| -> usize { u32.try_into().unwrap() };
 	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
@@ -204,7 +204,7 @@ pub fn gen_maze(maze: &mut [Tile], rng: &Rand, params: MazeParams) -> TilePos {
 }
 
 /// Generate the maze's rooms
-#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+#[cfg_attr(feature = "debug", tracing::instrument(skip(maze, rng)))]
 pub fn gen_rooms(maze: &mut [Tile], rng: &Rand, params: MazeParams) {
 	let idx = |UVec2 { x, y }| usize::try_from(y * MAZE_SIZE.x + x).unwrap();
 
@@ -358,6 +358,7 @@ fn reachable_neighbours(
 
 /// Solve the given maze, returning a minimum-distance tree with `start` as the
 /// root node
+#[cfg_attr(feature = "debug", tracing::instrument(skip(maze)))]
 pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> SortedTree<TilePos> {
 	let mut tree = Tree::new(start);
 
