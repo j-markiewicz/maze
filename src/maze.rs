@@ -18,7 +18,7 @@ use image::{imageops, load_from_memory, RgbaImage};
 use self::Direction::{Bottom, Left, Right, Top};
 use super::algorithms::{gen_maze, MazeParams};
 use crate::{
-	algorithms::{gen_rooms, solve_maze, Tree},
+	algorithms::{gen_rooms, solve_maze, SortedTree},
 	path::{self, Path},
 	util::{Rand, TurboRand},
 };
@@ -295,7 +295,7 @@ impl Neg for Direction {
 pub struct Roof;
 
 #[derive(Debug, Clone, Resource)]
-pub struct Paths(pub Tree<TilePos>);
+pub struct Paths(pub SortedTree<TilePos>);
 
 #[derive(Debug, Clone, Copy, Event)]
 pub struct RegenerateMaze;
@@ -459,7 +459,7 @@ fn gen_tile_textures(
 	res.map(|o| o.expect("image creation failed"))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
 pub struct TilePos {
 	pub x: u32,
 	pub y: u32,

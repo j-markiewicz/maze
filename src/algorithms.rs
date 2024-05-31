@@ -236,6 +236,68 @@ pub fn gen_rooms(maze: &mut [Tile], rng: &Rand, params: MazeParams) {
 	}
 }
 
+/// A binary search-able [`Tree`]
+#[derive(Debug, Clone)]
+pub struct SortedTree<T> {
+	inner: Tree<T>,
+}
+
+impl<T> SortedTree<T> {
+	/// Create a new sorted tree from the given tree
+	#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+	pub fn new(tree: Tree<T>) -> Self
+	where
+		T: Ord,
+	{
+		let mut nodes = tree
+			.nodes
+			.into_iter()
+			.enumerate()
+			.map(|(i, (v, p))| (v, p, i))
+			.collect::<Vec<_>>();
+		nodes.sort_unstable_by(|(a, ..), (b, ..)| a.cmp(b));
+
+		let mut relocations = HashMap::with_capacity(nodes.len());
+
+		for (i, (_, _, pi)) in nodes.iter().enumerate() {
+			relocations.insert(*pi, i);
+		}
+
+		let mut nodes = nodes
+			.into_iter()
+			.map(|(v, p, _)| (v, p))
+			.collect::<Vec<_>>();
+
+		for (_, p) in &mut nodes {
+			*p = *relocations.get(p).unwrap();
+		}
+
+		Self {
+			inner: Tree { nodes },
+		}
+	}
+
+	/// Get the value in the node at `idx`
+	pub fn get(&self, idx: usize) -> Option<&T> {
+		self.inner.get(idx)
+	}
+
+	/// Get the parent of the node at `idx`, returning `None` for the root node
+	pub fn parent(&self, idx: usize) -> Option<usize> {
+		self.inner.parent(idx)
+	}
+
+	/// Search for the index of a node with the given value (if there are
+	/// multiple nodes with the same value, an arbitrary one is returned)
+	#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+	pub fn search(&self, val: &T) -> Option<usize>
+	where
+		T: Ord,
+	{
+		self.inner.nodes.binary_search_by_key(&val, |(v, _)| v).ok()
+	}
+}
+
 /// An append-only tree using indexes as "pointers" to the parent node
 #[derive(Debug, Clone)]
 pub struct Tree<T> {
@@ -262,15 +324,18 @@ impl<T> Tree<T> {
 
 	/// Get the parent of the node at `idx`, returning `None` for the root node
 	pub fn parent(&self, idx: usize) -> Option<usize> {
-		if idx != 0 {
-			Some(self.nodes.get(idx)?.1)
-		} else {
+		let parent = self.nodes.get(idx)?.1;
+
+		if idx == parent {
 			None
+		} else {
+			Some(parent)
 		}
 	}
 
 	/// Search for the index of a node with the given value (if there are
 	/// multiple nodes with the same value, the first-inserted one is returned)
+	#[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
 	pub fn search(&self, val: &T) -> Option<usize>
 	where
 		T: PartialEq,
@@ -293,7 +358,7 @@ fn reachable_neighbours(
 
 /// Solve the given maze, returning a minimum-distance tree with `start` as the
 /// root node
-pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> Tree<TilePos> {
+pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> SortedTree<TilePos> {
 	let mut tree = Tree::new(start);
 
 	// Mark all nodes as unvisited
@@ -351,5 +416,5 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> Tree<TileP
 		}
 	}
 
-	tree
+	SortedTree::new(tree)
 }
