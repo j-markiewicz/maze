@@ -40,10 +40,7 @@ use tracing_web::{performance_layer, MakeConsoleWriter};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-#[cfg(all(
-	feature = "debug",
-	not(all(target_arch = "wasm32", not(target_feature = "atomics")))
-))]
+#[cfg(feature = "debug")]
 use crate::util::TrackingAlloc;
 use crate::{
 	algorithms::MazeParams,
