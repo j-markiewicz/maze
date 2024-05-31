@@ -258,7 +258,7 @@ impl Plugin for LogMemoryUsagePlugin {
 			if timer.0.just_finished() {
 				let allocated_bytes = crate::ALLOC.allocated_bytes.load(Ordering::Relaxed);
 				let allocated = allocated_bytes / 1024 / 1024;
-				info!(%allocated_bytes, "currently allocated memory: {allocated} MB");
+				info!(%allocated_bytes, "currently allocated memory: {allocated} MiB");
 			}
 		}
 
