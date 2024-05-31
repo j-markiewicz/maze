@@ -1,6 +1,7 @@
 use bevy::{app::AppExit, prelude::*};
 use bevy_simple_text_input::{
-	TextInputBundle, TextInputInactive, TextInputSettings, TextInputTextStyle, TextInputValue,
+	TextInputBundle, TextInputCursorPos, TextInputInactive, TextInputSettings, TextInputTextStyle,
+	TextInputValue,
 };
 
 use crate::{
@@ -148,12 +149,18 @@ pub fn select(
 
 pub fn focus(
 	query: Query<(Entity, &Interaction), Changed<Interaction>>,
-	mut text_inputs: Query<(Entity, &mut TextInputInactive)>,
+	mut text_inputs: Query<(
+		Entity,
+		&mut TextInputInactive,
+		&TextInputValue,
+		&mut TextInputCursorPos,
+	)>,
 ) {
 	for (interaction_entity, interaction) in &query {
 		if *interaction == Interaction::Pressed {
-			for (entity, mut inactive) in &mut text_inputs {
+			for (entity, mut inactive, value, mut pos) in &mut text_inputs {
 				inactive.0 = entity != interaction_entity;
+				pos.0 = value.0.len();
 			}
 		}
 	}
