@@ -4,6 +4,7 @@
 use bevy::log::debug;
 use bevy::{
 	ecs::system::Resource,
+	log::debug_span,
 	math::UVec2,
 	utils::{HashMap, HashSet},
 };
@@ -84,6 +85,7 @@ pub enum DirectionalBias {
 /// Get the neighbors of a tile, along with the direction towards which they are
 /// from the input tile position. The returned values may include the input
 /// value if movement in a direction is not possible.
+#[cfg_attr(feature = "debug", tracing::instrument(level = "debug"))]
 pub fn neighbors(
 	UVec2 { x, y }: UVec2,
 	params: MazeParams,
@@ -105,6 +107,10 @@ pub fn neighbors(
 
 /// Randomly get the next tile in the maze for the usual recursive backtracking
 /// algorithm
+#[cfg_attr(
+	feature = "debug",
+	tracing::instrument(level = "debug", skip(visited, rng, params))
+)]
 pub fn next_maze(
 	pos: UVec2,
 	visited: &[UVec2],
@@ -155,6 +161,8 @@ pub fn gen_maze(maze: &mut [Tile], rng: &Rand, params: MazeParams) -> TilePos {
 	let mut route = vec![pos];
 
 	loop {
+		let _loop = debug_span!("generation loop").entered();
+
 		// Go in a random direction
 		let Some((next, dir)) = next_maze(pos, &visited, rng, params) else {
 			// All neighbours have been visited, backtrack
@@ -345,6 +353,7 @@ impl<T> Tree<T> {
 }
 
 /// Get all reachable neighbours of the tile `tile` at `pos`
+#[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip(params)))]
 fn reachable_neighbours(
 	tile: Tile,
 	pos: TilePos,
@@ -381,21 +390,28 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> SortedTree
 	let mut current = start;
 
 	loop {
+		let _loop = debug_span!("solution loop").entered();
+		let update_neighbours = debug_span!("update neighbours").entered();
+
 		// Update the distances of all reachable unvisited neighbours of the current
 		// node to the minimum of their current distances and the current node's
 		// distance plus one.
-		#[allow(clippy::needless_collect)]
 		for unvisited_neighbour in reachable_neighbours(maze.get(current), current, params)
 			.filter(|&p| unvisited.contains(&p))
-			.collect::<Vec<_>>()
 		{
 			let current_distance = *distances.get(&current).unwrap();
 			let neighbour_distance = distances.get_mut(&unvisited_neighbour).unwrap();
 			*neighbour_distance = (*neighbour_distance).min(current_distance + 1);
 		}
 
+		drop(update_neighbours);
+		let mark_visited = debug_span!("mark as visited").entered();
+
 		// Mark the current node as visited
 		unvisited.remove(&current);
+
+		drop(mark_visited);
+		let append = debug_span!("append to tree").entered();
 
 		// Append the current node to its neighbour with the minimum distance
 		let min_neighbour = reachable_neighbours(maze.get(current), current, params)
@@ -404,17 +420,22 @@ pub fn solve_maze(maze: &Maze, start: TilePos, params: MazeParams) -> SortedTree
 			.unwrap_or(start);
 		tree.append(current, tree.search(&min_neighbour).unwrap_or_default());
 
+		drop(append);
+		let go_next_node = debug_span!("go to next node").entered();
+
 		// Go to the unvisited node with the smallest finite current distance
 		current = if let Some(new) = unvisited
 			.iter()
-			.filter(|&n| *distances.get(n).unwrap() != u32::MAX)
 			.min_by_key(|&n| *distances.get(n).unwrap())
+			.filter(|&n| *distances.get(n).unwrap() != u32::MAX)
 		{
 			*new
 		} else {
 			// There are no more reachable unvisited node, the algorithm is done
 			break;
-		}
+		};
+
+		drop(go_next_node);
 	}
 
 	SortedTree::new(tree)
