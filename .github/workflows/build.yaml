@@ -67,7 +67,7 @@ jobs:
       - run: |
           sudo apt update
           sudo apt install -y musl-tools musl-dev crossbuild-essential-arm64 clang pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev libxkbcommon-dev mesa-vulkan-drivers
-          cargo build --release --target ${{ matrix.target }}
+          PKG_CONFIG_SYSROOT_DIR=/ cargo build --release --target ${{ matrix.target }}
           mv target/${{ matrix.target }}/release/maze labirynt-${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
         with:
